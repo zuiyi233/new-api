@@ -1,0 +1,310 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e7]:
+      - link "logo New API" [ref=e67] [cursor=pointer]:
+        - /url: /
+        - img "logo" [ref=e12]
+        - heading "New API" [level=4] [ref=e68]
+      - navigation [ref=e17]:
+        - link "首页" [ref=e69] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e70]: 首页
+        - link "控制台" [ref=e71] [cursor=pointer]:
+          - /url: /console
+          - generic [ref=e72]: 控制台
+        - link "模型广场" [ref=e73] [cursor=pointer]:
+          - /url: /pricing
+          - generic [ref=e74]: 模型广场
+        - link "文档" [ref=e75] [cursor=pointer]:
+          - /url: https://docs.newapi.pro
+          - generic [ref=e76]: 文档
+        - link "关于" [ref=e77] [cursor=pointer]:
+          - /url: /about
+          - generic [ref=e78]: 关于
+      - generic [ref=e30]:
+        - button "系统公告" [ref=e31] [cursor=pointer]:
+          - img [ref=e33]
+        - button "切换主题" [ref=e36] [cursor=pointer]:
+          - img [ref=e38]
+        - button "common.changeLanguage" [ref=e40] [cursor=pointer]:
+          - img [ref=e42]
+        - button "R rootadmin" [ref=e283] [cursor=pointer]:
+          - generic [ref=e284]:
+            - listitem [ref=e285]:
+              - img "R" [ref=e287]
+            - generic [ref=e288]: rootadmin
+            - img [ref=e289]
+    - generic [ref=e52]:
+      - complementary [ref=e291]:
+        - generic [ref=e293]:
+          - menu [ref=e298]:
+            - generic [ref=e299]:
+              - generic [ref=e300]: 聊天
+              - link "操练场" [ref=e301] [cursor=pointer]:
+                - /url: /console/playground
+                - menuitem "操练场" [ref=e302]:
+                  - img [ref=e305]
+                  - generic [ref=e308]: 操练场
+              - listitem [ref=e309] [cursor=pointer]:
+                - menuitem "聊天" [ref=e310]:
+                  - generic [ref=e311]:
+                    - img [ref=e314]
+                    - generic [ref=e316]: 聊天
+                    - img [ref=e318]:
+                      - img [ref=e319]
+            - generic [ref=e322]:
+              - generic [ref=e323]: 控制台
+              - link "数据看板" [ref=e324] [cursor=pointer]:
+                - /url: /console
+                - menuitem "数据看板" [ref=e325]:
+                  - img [ref=e328]
+                  - generic [ref=e333]: 数据看板
+              - link "令牌管理" [ref=e334] [cursor=pointer]:
+                - /url: /console/token
+                - menuitem "令牌管理" [ref=e335]:
+                  - img [ref=e338]
+                  - generic [ref=e342]: 令牌管理
+              - link "使用日志" [ref=e343] [cursor=pointer]:
+                - /url: /console/log
+                - menuitem "使用日志" [ref=e344]:
+                  - img [ref=e347]
+                  - generic [ref=e349]: 使用日志
+              - link "绘图日志" [ref=e350] [cursor=pointer]:
+                - /url: /console/midjourney
+                - menuitem "绘图日志" [ref=e351]:
+                  - img [ref=e354]
+                  - generic [ref=e358]: 绘图日志
+              - link "任务日志" [ref=e359] [cursor=pointer]:
+                - /url: /console/task
+                - menuitem "任务日志" [ref=e360]:
+                  - img [ref=e363]
+                  - generic [ref=e366]: 任务日志
+            - generic [ref=e368]:
+              - generic [ref=e369]: 个人中心
+              - link "钱包管理" [ref=e370] [cursor=pointer]:
+                - /url: /console/topup
+                - menuitem "钱包管理" [ref=e371]:
+                  - img [ref=e374]
+                  - generic [ref=e376]: 钱包管理
+              - link "个人设置" [ref=e377] [cursor=pointer]:
+                - /url: /console/personal
+                - menuitem "个人设置" [ref=e378]:
+                  - img [ref=e381]
+                  - generic [ref=e384]: 个人设置
+            - generic [ref=e386]:
+              - generic [ref=e387]: 管理员
+              - link "渠道管理" [ref=e388] [cursor=pointer]:
+                - /url: /console/channel
+                - menuitem "渠道管理" [ref=e389]:
+                  - img [ref=e392]
+                  - generic [ref=e396]: 渠道管理
+              - link "订阅管理" [ref=e397] [cursor=pointer]:
+                - /url: /console/subscription
+                - menuitem "订阅管理" [ref=e398]:
+                  - img [ref=e401]
+                  - generic [ref=e405]: 订阅管理
+              - link "模型管理" [ref=e406] [cursor=pointer]:
+                - /url: /console/models
+                - menuitem "模型管理" [ref=e407]:
+                  - img [ref=e410]
+                  - generic [ref=e414]: 模型管理
+              - link "模型部署" [ref=e415] [cursor=pointer]:
+                - /url: /console/deployment
+                - menuitem "模型部署" [ref=e416]:
+                  - img [ref=e419]
+                  - generic [ref=e422]: 模型部署
+              - link "兑换码管理" [ref=e423] [cursor=pointer]:
+                - /url: /console/redemption
+                - menuitem "兑换码管理" [ref=e424]:
+                  - img [ref=e427]
+                  - generic [ref=e431]: 兑换码管理
+              - link "注册码管理" [ref=e432] [cursor=pointer]:
+                - /url: /console/registration-code
+                - menuitem "注册码管理" [ref=e433]:
+                  - img [ref=e436]
+                  - generic [ref=e440]: 注册码管理
+              - link "用户管理" [ref=e441] [cursor=pointer]:
+                - /url: /console/user
+                - menuitem "用户管理" [ref=e442]:
+                  - img [ref=e445]
+                  - generic [ref=e448]: 用户管理
+              - link "系统设置" [ref=e449] [cursor=pointer]:
+                - /url: /console/setting
+                - menuitem "系统设置" [ref=e450]:
+                  - img [ref=e453]
+                  - generic [ref=e456]: 系统设置
+          - button "收起侧边栏" [ref=e458] [cursor=pointer]:
+            - generic [ref=e459]:
+              - img [ref=e460]
+              - generic [ref=e462]: 收起侧边栏
+      - generic [ref=e53]:
+        - main [ref=e54]:
+          - generic [ref=e464]:
+            - generic [ref=e465]:
+              - heading "👋晚上好，rootadmin" [level=2] [ref=e466]
+              - generic [ref=e467]:
+                - button [ref=e468] [cursor=pointer]:
+                  - img [ref=e470]
+                - button [ref=e473] [cursor=pointer]:
+                  - img [ref=e475]
+            - generic [ref=e481]:
+              - generic [ref=e482]:
+                - generic [ref=e486]:
+                  - img [ref=e487]
+                  - text: 账户数据
+                - generic [ref=e491]:
+                  - generic [ref=e492] [cursor=pointer]:
+                    - generic [ref=e493]:
+                      - listitem [ref=e494]:
+                        - img "money_exchange_stroked" [ref=e495]:
+                          - img [ref=e496]
+                      - generic [ref=e498]:
+                        - generic [ref=e499]: 当前余额
+                        - generic [ref=e500]: $200.00
+                    - 'button "Tag: 充值" [ref=e501]':
+                      - generic [ref=e502]: 充值
+                  - generic [ref=e504] [cursor=pointer]:
+                    - listitem [ref=e505]:
+                      - img "histogram" [ref=e506]:
+                        - img [ref=e507]
+                    - generic [ref=e509]:
+                      - generic [ref=e510]: 历史消耗
+                      - generic [ref=e511]: $0.00
+              - generic [ref=e512]:
+                - generic [ref=e516]:
+                  - img [ref=e517]
+                  - text: 使用统计
+                - generic [ref=e520]:
+                  - generic [ref=e522] [cursor=pointer]:
+                    - listitem [ref=e523]:
+                      - img "send" [ref=e524]:
+                        - img [ref=e525]
+                    - generic [ref=e527]:
+                      - generic [ref=e528]: 请求次数
+                      - generic [ref=e529]: "0"
+                  - generic [ref=e531] [cursor=pointer]:
+                    - listitem [ref=e532]:
+                      - img "pulse" [ref=e533]:
+                        - img [ref=e534]
+                    - generic [ref=e536]:
+                      - generic [ref=e537]: 统计次数
+                      - generic [ref=e538]: "0"
+              - generic [ref=e542]:
+                - generic [ref=e546]:
+                  - img [ref=e547]
+                  - text: 资源消耗
+                - generic [ref=e550]:
+                  - generic [ref=e552] [cursor=pointer]:
+                    - listitem [ref=e553]:
+                      - img "coin_money_stroked" [ref=e554]:
+                        - img [ref=e555]
+                    - generic [ref=e557]:
+                      - generic [ref=e558]: 统计额度
+                      - generic [ref=e559]: $0.00
+                  - generic [ref=e564] [cursor=pointer]:
+                    - listitem [ref=e565]:
+                      - img "text_stroked" [ref=e566]:
+                        - img [ref=e567]
+                    - generic [ref=e569]:
+                      - generic [ref=e570]: 统计Tokens
+                      - generic [ref=e571]: "0"
+              - generic [ref=e575]:
+                - generic [ref=e579]:
+                  - img [ref=e580]
+                  - text: 性能指标
+                - generic [ref=e584]:
+                  - generic [ref=e586] [cursor=pointer]:
+                    - listitem [ref=e587]:
+                      - img "stopwatch_stroked" [ref=e588]:
+                        - img [ref=e589]
+                    - generic [ref=e591]:
+                      - generic [ref=e592]: 平均RPM
+                      - generic [ref=e593]: "0.000"
+                  - generic [ref=e595] [cursor=pointer]:
+                    - listitem [ref=e596]:
+                      - img "typograph" [ref=e597]:
+                        - img [ref=e598]
+                    - generic [ref=e601]:
+                      - generic [ref=e602]: 平均TPM
+                      - generic [ref=e603]: "0"
+            - generic [ref=e605]:
+              - generic [ref=e610]:
+                - generic [ref=e611]:
+                  - img [ref=e612]
+                  - text: 模型数据分析
+                - generic [ref=e615]:
+                  - tablist [ref=e616]:
+                    - tab "消耗分布" [selected] [ref=e617]
+                    - tab "消耗趋势" [ref=e618] [cursor=pointer]
+                    - tab "调用次数分布" [ref=e619] [cursor=pointer]
+                    - tab "调用次数排行" [ref=e620] [cursor=pointer]
+                  - generic:
+                    - tabpanel "消耗分布"
+              - generic [ref=e625]:
+                - generic [ref=e629]:
+                  - img [ref=e630]
+                  - text: API信息
+                - generic [ref=e637]:
+                  - generic:
+                    - img
+                  - generic [ref=e638]:
+                    - heading "暂无API信息" [level=4] [ref=e639]
+                    - generic [ref=e640]: 请联系管理员在系统设置中配置API信息
+            - generic [ref=e642]:
+              - generic [ref=e643]:
+                - generic [ref=e647]:
+                  - generic [ref=e648]:
+                    - img [ref=e649]
+                    - text: 系统公告
+                    - 'generic "Tag: 显示最新20条" [ref=e652]':
+                      - generic [ref=e653]: 显示最新20条
+                  - generic [ref=e654]:
+                    - generic [ref=e657]: 默认
+                    - generic [ref=e660]: 进行中
+                    - generic [ref=e663]: 成功
+                    - generic [ref=e666]: 警告
+                    - generic [ref=e669]: 异常
+                - generic [ref=e674]:
+                  - generic:
+                    - img
+                  - generic [ref=e675]:
+                    - heading "暂无系统公告" [level=4] [ref=e676]
+                    - generic [ref=e677]: 请联系管理员在系统设置中配置公告信息
+              - generic [ref=e678]:
+                - generic [ref=e682]:
+                  - img [ref=e683]
+                  - text: 常见问答
+                - generic [ref=e690]:
+                  - generic:
+                    - img
+                  - generic [ref=e691]:
+                    - heading "暂无常见问答" [level=4] [ref=e692]
+                    - generic [ref=e693]: 请联系管理员在系统设置中配置常见问答
+              - generic [ref=e694]:
+                - generic [ref=e698]:
+                  - generic [ref=e699]:
+                    - img [ref=e700]
+                    - text: 服务可用性
+                  - button [ref=e703] [cursor=pointer]:
+                    - img [ref=e705]
+                - generic [ref=e715]:
+                  - generic:
+                    - img
+                  - generic [ref=e716]:
+                    - heading "暂无监控数据" [level=4] [ref=e717]
+                    - generic [ref=e718]: 请联系管理员在系统设置中配置Uptime
+        - generic [ref=e61]:
+          - generic [ref=e63]: © 2026 New API. 版权所有
+          - generic [ref=e64]:
+            - generic [ref=e65]: 设计与开发由
+            - link "New API" [ref=e66] [cursor=pointer]:
+              - /url: https://github.com/QuantumNous/new-api
+  - generic [ref=e719]:
+    - alert "success type":
+      - generic [ref=e720]:
+        - img "tick_circle" [ref=e721]:
+          - img [ref=e722]
+        - generic [ref=e724]: 登录成功！
+        - button "close" [ref=e726] [cursor=pointer]:
+          - img "close" [ref=e728]:
+            - img [ref=e729]

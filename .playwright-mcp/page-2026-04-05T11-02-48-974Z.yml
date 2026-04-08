@@ -1,0 +1,80 @@
+- generic [ref=e3]:
+  - generic [ref=e7]:
+    - link "logo New API" [ref=e67] [cursor=pointer]:
+      - /url: /
+      - img "logo" [ref=e12]
+      - heading "New API" [level=4] [ref=e68]
+    - navigation [ref=e17]:
+      - link "首页" [ref=e69] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e70]: 首页
+      - link "控制台" [active] [ref=e71] [cursor=pointer]:
+        - /url: /login
+        - generic [ref=e72]: 控制台
+      - link "模型广场" [ref=e73] [cursor=pointer]:
+        - /url: /pricing
+        - generic [ref=e74]: 模型广场
+      - link "文档" [ref=e75] [cursor=pointer]:
+        - /url: https://docs.newapi.pro
+        - generic [ref=e76]: 文档
+      - link "关于" [ref=e77] [cursor=pointer]:
+        - /url: /about
+        - generic [ref=e78]: 关于
+    - generic [ref=e30]:
+      - button "系统公告" [ref=e31] [cursor=pointer]:
+        - img [ref=e33]
+      - button "切换主题" [ref=e36] [cursor=pointer]:
+        - img [ref=e38]
+      - button "common.changeLanguage" [ref=e40] [cursor=pointer]:
+        - img [ref=e42]
+      - generic [ref=e79]:
+        - link "登录" [ref=e80] [cursor=pointer]:
+          - /url: /login
+          - button "登录" [ref=e81]:
+            - generic [ref=e83]: 登录
+        - link "注册" [ref=e85] [cursor=pointer]:
+          - /url: /register
+          - button "注册" [ref=e86]:
+            - generic [ref=e88]: 注册
+  - generic [ref=e53]:
+    - main [ref=e54]:
+      - generic [ref=e240]:
+        - generic [ref=e241]:
+          - img "Logo" [ref=e242]
+          - heading "New API" [level=3] [ref=e243]
+        - generic [ref=e245]:
+          - heading "登 录" [level=3] [ref=e247]
+          - generic [ref=e248]:
+            - generic [ref=e249]:
+              - generic [ref=e250]:
+                - generic [ref=e252]: 用户名或邮箱
+                - generic [ref=e254]:
+                  - img "mail" [ref=e256]:
+                    - img [ref=e257]
+                  - textbox "用户名或邮箱" [ref=e259]:
+                    - /placeholder: 请输入您的用户名或邮箱地址
+              - generic [ref=e260]:
+                - generic [ref=e262]: 密码
+                - generic [ref=e264]:
+                  - img "lock" [ref=e266]:
+                    - img [ref=e267]
+                  - textbox "密码" [ref=e269]:
+                    - /placeholder: 请输入您的密码
+                  - button "Show password" [ref=e270] [cursor=pointer]:
+                    - img "eye_closed_solid" [ref=e271]:
+                      - img [ref=e272]
+              - generic [ref=e275]:
+                - button "继续" [ref=e276] [cursor=pointer]:
+                  - generic [ref=e277]: 继续
+                - button "忘记密码？" [ref=e278] [cursor=pointer]:
+                  - generic [ref=e279]: 忘记密码？
+            - generic [ref=e281]:
+              - text: 没有账户？
+              - link "注册" [ref=e282] [cursor=pointer]:
+                - /url: /register
+    - generic [ref=e61]:
+      - generic [ref=e63]: © 2026 New API. 版权所有
+      - generic [ref=e64]:
+        - generic [ref=e65]: 设计与开发由
+        - link "New API" [ref=e66] [cursor=pointer]:
+          - /url: https://github.com/QuantumNous/new-api

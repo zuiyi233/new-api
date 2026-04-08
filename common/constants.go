@@ -50,6 +50,8 @@ var WeChatAuthEnabled = false
 var TelegramOAuthEnabled = false
 var TurnstileCheckEnabled = false
 var RegisterEnabled = true
+var RegistrationCodeRequired = true
+var NovelProductEnabled = true
 
 var EmailDomainRestrictionEnabled = false // 是否启用邮箱域名限制
 var EmailAliasRestrictionEnabled = false  // 是否启用邮箱别名限制
@@ -201,6 +203,22 @@ const (
 	RedemptionCodeStatusEnabled  = 1 // don't use 0, 0 is the default value!
 	RedemptionCodeStatusDisabled = 2 // also don't use 0
 	RedemptionCodeStatusUsed     = 3 // also don't use 0
+)
+
+const (
+	RegistrationCodeStatusEnabled  = 1 // don't use 0, 0 is the default value!
+	RegistrationCodeStatusDisabled = 2 // also don't use 0
+)
+
+const (
+	UserProductEntitlementStatusEnabled  = 1 // don't use 0, 0 is the default value!
+	UserProductEntitlementStatusDisabled = 2 // also don't use 0
+)
+
+const (
+	ProductKeyNovel                       = "novel_product"
+	EntitlementSourceTypeRegistrationCode = "registration_code"
+	EntitlementSourceTypeAdminGrant       = "admin_grant"
 )
 
 const (

@@ -98,20 +98,6 @@ func (c *ClaudeMediaMessage) ParseMediaContent() []ClaudeMediaMessage {
 	return mediaContent
 }
 
-func (m *ClaudeMediaMessage) ToFileSource() types.FileSource {
-	if m.Source == nil {
-		return nil
-	}
-	data := m.Source.Url
-	if data == "" {
-		data = common.Interface2String(m.Source.Data)
-	}
-	if data == "" {
-		return nil
-	}
-	return types.NewFileSourceFromData(data, m.Source.MediaType)
-}
-
 type ClaudeMessageSource struct {
 	Type      string `json:"type"`
 	MediaType string `json:"media_type,omitempty"`
@@ -241,6 +227,14 @@ type OutputConfigForEffort struct {
 	Effort string `json:"effort,omitempty"`
 }
 
+// createClaudeFileSource 根据数据内容创建正确类型的 FileSource
+func createClaudeFileSource(data string) *types.FileSource {
+	if strings.HasPrefix(data, "http://") || strings.HasPrefix(data, "https://") {
+		return types.NewURLFileSource(data)
+	}
+	return types.NewBase64FileSource(data, "")
+}
+
 func (c *ClaudeRequest) GetTokenCountMeta() *types.TokenCountMeta {
 	maxTokens := 0
 	if c.MaxTokens != nil {
@@ -268,11 +262,17 @@ func (c *ClaudeRequest) GetTokenCountMeta() *types.TokenCountMeta {
 				case "text":
 					texts = append(texts, media.GetText())
 				case "image":
-					if source := media.ToFileSource(); source != nil {
-						fileMeta = append(fileMeta, &types.FileMeta{
-							FileType: types.FileTypeImage,
-							Source:   source,
-						})
+					if media.Source != nil {
+						data := media.Source.Url
+						if data == "" {
+							data = common.Interface2String(media.Source.Data)
+						}
+						if data != "" {
+							fileMeta = append(fileMeta, &types.FileMeta{
+								FileType: types.FileTypeImage,
+								Source:   createClaudeFileSource(data),
+							})
+						}
 					}
 				}
 			}
@@ -297,11 +297,17 @@ func (c *ClaudeRequest) GetTokenCountMeta() *types.TokenCountMeta {
 			case "text":
 				texts = append(texts, media.GetText())
 			case "image":
-				if source := media.ToFileSource(); source != nil {
-					fileMeta = append(fileMeta, &types.FileMeta{
-						FileType: types.FileTypeImage,
-						Source:   source,
-					})
+				if media.Source != nil {
+					data := media.Source.Url
+					if data == "" {
+						data = common.Interface2String(media.Source.Data)
+					}
+					if data != "" {
+						fileMeta = append(fileMeta, &types.FileMeta{
+							FileType: types.FileTypeImage,
+							Source:   createClaudeFileSource(data),
+						})
+					}
 				}
 			case "tool_use":
 				if media.Name != "" {

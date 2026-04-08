@@ -150,18 +150,7 @@ export const buildApiPayload = (
     const value = inputs[param];
     const hasValue = value !== undefined && value !== null;
 
-    if (!enabled) {
-      return;
-    }
-
-    if (param === 'max_tokens') {
-      if (typeof value === 'number') {
-        payload[param] = value;
-      }
-      return;
-    }
-
-    if (hasValue) {
+    if (enabled && hasValue) {
       payload[param] = value;
     }
   });

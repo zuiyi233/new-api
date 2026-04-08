@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
 
@@ -71,7 +72,8 @@ func SetApiRouter(router *gin.Engine) {
 			{
 				selfRoute.GET("/self/groups", controller.GetUserGroups)
 				selfRoute.GET("/self", controller.GetSelf)
-				selfRoute.GET("/models", controller.GetUserModels)
+				selfRoute.GET("/self/entitlements", controller.GetSelfEntitlements)
+				selfRoute.GET("/models", middleware.RequireProductEntitlement(common.ProductKeyNovel), controller.GetUserModels)
 				selfRoute.PUT("/self", controller.UpdateSelf)
 				selfRoute.DELETE("/self", controller.DeleteSelf)
 				selfRoute.GET("/token", controller.GenerateAccessToken)
@@ -121,6 +123,9 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.DELETE("/:id/oauth/bindings/:provider_id", controller.UnbindCustomOAuthByAdmin)
 				adminRoute.DELETE("/:id/bindings/:binding_type", controller.AdminClearUserBinding)
 				adminRoute.GET("/:id", controller.GetUser)
+				adminRoute.GET("/:id/entitlements", controller.GetUserEntitlementsByAdmin)
+				adminRoute.POST("/:id/entitlements", controller.AddUserEntitlementByAdmin)
+				adminRoute.PUT("/:id/entitlements", controller.UpdateUserEntitlementByAdmin)
 				adminRoute.POST("/", controller.CreateUser)
 				adminRoute.POST("/manage", controller.ManageUser)
 				adminRoute.PUT("/", controller.UpdateUser)
@@ -257,7 +262,6 @@ func SetApiRouter(router *gin.Engine) {
 			tokenRoute.PUT("/", controller.UpdateToken)
 			tokenRoute.DELETE("/:id", controller.DeleteToken)
 			tokenRoute.POST("/batch", controller.DeleteTokenBatch)
-			tokenRoute.POST("/batch/keys", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.GetTokenKeysBatch)
 		}
 
 		usageRoute := apiRouter.Group("/usage")
@@ -280,6 +284,18 @@ func SetApiRouter(router *gin.Engine) {
 			redemptionRoute.PUT("/", controller.UpdateRedemption)
 			redemptionRoute.DELETE("/invalid", controller.DeleteInvalidRedemption)
 			redemptionRoute.DELETE("/:id", controller.DeleteRedemption)
+		}
+		apiRouter.POST("/registration-code/validate", middleware.CriticalRateLimit(), controller.ValidateRegistrationCode)
+		registrationCodeRoute := apiRouter.Group("/registration-code")
+		registrationCodeRoute.Use(middleware.AdminAuth())
+		{
+			registrationCodeRoute.GET("/", controller.GetAllRegistrationCodes)
+			registrationCodeRoute.GET("/search", controller.SearchRegistrationCodes)
+			registrationCodeRoute.GET("/usage", controller.GetRegistrationCodeUsages)
+			registrationCodeRoute.GET("/:id", controller.GetRegistrationCode)
+			registrationCodeRoute.POST("/", controller.AddRegistrationCode)
+			registrationCodeRoute.PUT("/", controller.UpdateRegistrationCode)
+			registrationCodeRoute.DELETE("/:id", controller.DeleteRegistrationCode)
 		}
 		logRoute := apiRouter.Group("/log")
 		logRoute.GET("/", middleware.AdminAuth(), controller.GetAllLogs)

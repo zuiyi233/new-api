@@ -1,0 +1,190 @@
+- generic [ref=e3]:
+  - generic [ref=e7]:
+    - link "logo New API" [ref=e67] [cursor=pointer]:
+      - /url: /
+      - img "logo" [ref=e12]
+      - heading "New API" [level=4] [ref=e68]
+    - navigation [ref=e17]:
+      - link "首页" [ref=e69] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e70]: 首页
+      - link "控制台" [ref=e71] [cursor=pointer]:
+        - /url: /console
+        - generic [ref=e72]: 控制台
+      - link "模型广场" [ref=e73] [cursor=pointer]:
+        - /url: /pricing
+        - generic [ref=e74]: 模型广场
+      - link "文档" [ref=e75] [cursor=pointer]:
+        - /url: https://docs.newapi.pro
+        - generic [ref=e76]: 文档
+      - link "关于" [ref=e77] [cursor=pointer]:
+        - /url: /about
+        - generic [ref=e78]: 关于
+    - generic [ref=e30]:
+      - button "系统公告" [ref=e31] [cursor=pointer]:
+        - img [ref=e33]
+      - button "切换主题" [ref=e36] [cursor=pointer]:
+        - img [ref=e38]
+      - button "common.changeLanguage" [ref=e40] [cursor=pointer]:
+        - img [ref=e42]
+      - button "R rootadmin" [ref=e283] [cursor=pointer]:
+        - generic [ref=e284]:
+          - listitem [ref=e285]:
+            - img "R" [ref=e287]
+          - generic [ref=e288]: rootadmin
+          - img [ref=e289]
+  - generic [ref=e52]:
+    - complementary [ref=e291]:
+      - generic [ref=e293]:
+        - menu [ref=e298]:
+          - generic [ref=e299]:
+            - generic [ref=e300]: 聊天
+            - link "操练场" [ref=e301] [cursor=pointer]:
+              - /url: /console/playground
+              - menuitem "操练场" [ref=e302]:
+                - img [ref=e305]
+                - generic [ref=e308]: 操练场
+            - listitem [ref=e309] [cursor=pointer]:
+              - menuitem "聊天" [ref=e310]:
+                - generic [ref=e311]:
+                  - img [ref=e314]
+                  - generic [ref=e316]: 聊天
+                  - img [ref=e318]:
+                    - img [ref=e319]
+          - generic [ref=e322]:
+            - generic [ref=e323]: 控制台
+            - link "数据看板" [ref=e324] [cursor=pointer]:
+              - /url: /console
+              - menuitem "数据看板" [ref=e325]:
+                - img [ref=e328]
+                - generic [ref=e333]: 数据看板
+            - link "令牌管理" [ref=e334] [cursor=pointer]:
+              - /url: /console/token
+              - menuitem "令牌管理" [ref=e335]:
+                - img [ref=e338]
+                - generic [ref=e342]: 令牌管理
+            - link "使用日志" [ref=e343] [cursor=pointer]:
+              - /url: /console/log
+              - menuitem "使用日志" [ref=e344]:
+                - img [ref=e347]
+                - generic [ref=e349]: 使用日志
+            - link "绘图日志" [ref=e350] [cursor=pointer]:
+              - /url: /console/midjourney
+              - menuitem "绘图日志" [ref=e351]:
+                - img [ref=e354]
+                - generic [ref=e358]: 绘图日志
+            - link "任务日志" [ref=e359] [cursor=pointer]:
+              - /url: /console/task
+              - menuitem "任务日志" [ref=e360]:
+                - img [ref=e363]
+                - generic [ref=e366]: 任务日志
+          - generic [ref=e368]:
+            - generic [ref=e369]: 个人中心
+            - link "钱包管理" [ref=e370] [cursor=pointer]:
+              - /url: /console/topup
+              - menuitem "钱包管理" [ref=e371]:
+                - img [ref=e374]
+                - generic [ref=e376]: 钱包管理
+            - link "个人设置" [ref=e377] [cursor=pointer]:
+              - /url: /console/personal
+              - menuitem "个人设置" [ref=e378]:
+                - img [ref=e381]
+                - generic [ref=e384]: 个人设置
+          - generic [ref=e386]:
+            - generic [ref=e387]: 管理员
+            - link "渠道管理" [ref=e388] [cursor=pointer]:
+              - /url: /console/channel
+              - menuitem "渠道管理" [ref=e389]:
+                - img [ref=e392]
+                - generic [ref=e396]: 渠道管理
+            - link "订阅管理" [ref=e397] [cursor=pointer]:
+              - /url: /console/subscription
+              - menuitem "订阅管理" [ref=e398]:
+                - img [ref=e401]
+                - generic [ref=e405]: 订阅管理
+            - link "模型管理" [ref=e406] [cursor=pointer]:
+              - /url: /console/models
+              - menuitem "模型管理" [ref=e407]:
+                - img [ref=e410]
+                - generic [ref=e414]: 模型管理
+            - link "模型部署" [ref=e415] [cursor=pointer]:
+              - /url: /console/deployment
+              - menuitem "模型部署" [ref=e416]:
+                - img [ref=e419]
+                - generic [ref=e422]: 模型部署
+            - link "兑换码管理" [ref=e423] [cursor=pointer]:
+              - /url: /console/redemption
+              - menuitem "兑换码管理" [ref=e424]:
+                - img [ref=e427]
+                - generic [ref=e431]: 兑换码管理
+            - link "注册码管理" [ref=e432] [cursor=pointer]:
+              - /url: /console/registration-code
+              - menuitem "注册码管理" [active] [ref=e433]:
+                - img [ref=e436]
+                - generic [ref=e440]: 注册码管理
+            - link "用户管理" [ref=e441] [cursor=pointer]:
+              - /url: /console/user
+              - menuitem "用户管理" [ref=e442]:
+                - img [ref=e445]
+                - generic [ref=e448]: 用户管理
+            - link "系统设置" [ref=e449] [cursor=pointer]:
+              - /url: /console/setting
+              - menuitem "系统设置" [ref=e450]:
+                - img [ref=e453]
+                - generic [ref=e456]: 系统设置
+        - button "收起侧边栏" [ref=e458] [cursor=pointer]:
+          - generic [ref=e459]:
+            - img [ref=e460]
+            - generic [ref=e462]: 收起侧边栏
+    - generic [ref=e53]:
+      - main [ref=e54]:
+        - generic [ref=e732]:
+          - generic [ref=e736]:
+            - generic [ref=e737]:
+              - generic [ref=e738]:
+                - img [ref=e739]
+                - generic [ref=e742]: 注册码管理
+              - button "紧凑列表" [ref=e743] [cursor=pointer]:
+                - generic [ref=e744]: 紧凑列表
+            - generic [ref=e748]:
+              - generic [ref=e749]:
+                - button "添加注册码" [ref=e750] [cursor=pointer]:
+                  - generic [ref=e751]: 添加注册码
+                - button "复制所选注册码到剪贴板" [disabled] [ref=e752]:
+                  - generic [ref=e753]: 复制所选注册码到剪贴板
+              - generic [ref=e756]:
+                - generic [ref=e758]:
+                  - img "search" [ref=e760]:
+                    - img [ref=e761]
+                  - textbox "关键字(id、名称或注册码)" [ref=e763]
+                - generic [ref=e764]:
+                  - button "查询" [ref=e765] [cursor=pointer]:
+                    - generic [ref=e766]: 查询
+                  - button "重置" [ref=e767] [cursor=pointer]:
+                    - generic [ref=e768]: 重置
+          - generic [ref=e775]:
+            - grid [ref=e776]:
+              - rowgroup [ref=e788]:
+                - row "Select all rows ID 名称 注册码 状态 产品资格 已用/上限 过期时间 创建时间" [ref=e789]:
+                  - columnheader "Select all rows" [ref=e790]:
+                    - checkbox "Select all rows" [ref=e794]
+                  - columnheader "ID" [ref=e796]
+                  - columnheader "名称" [ref=e797]
+                  - columnheader "注册码" [ref=e798]
+                  - columnheader "状态" [ref=e799]
+                  - columnheader "产品资格" [ref=e800]
+                  - columnheader "已用/上限" [ref=e801]
+                  - columnheader "过期时间" [ref=e802]
+                  - columnheader "创建时间" [ref=e803]
+                  - columnheader [ref=e804]
+              - rowgroup
+            - generic [ref=e807]:
+              - generic:
+                - img
+              - generic [ref=e809]: 搜索无结果
+      - generic [ref=e61]:
+        - generic [ref=e63]: © 2026 New API. 版权所有
+        - generic [ref=e64]:
+          - generic [ref=e65]: 设计与开发由
+          - link "New API" [ref=e66] [cursor=pointer]:
+            - /url: https://github.com/QuantumNous/new-api
