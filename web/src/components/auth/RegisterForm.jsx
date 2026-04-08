@@ -79,6 +79,7 @@ const RegisterForm = () => {
     password2: '',
     email: '',
     verification_code: '',
+    registration_code: '',
     wechat_verification_code: '',
   });
   const { username, password, password2 } = inputs;
@@ -108,6 +109,12 @@ const RegisterForm = () => {
   const [hasPrivacyPolicy, setHasPrivacyPolicy] = useState(false);
   const [githubButtonState, setGithubButtonState] = useState('idle');
   const [githubButtonDisabled, setGithubButtonDisabled] = useState(false);
+  const [registrationCodeValidation, setRegistrationCodeValidation] = useState({
+    status: 'idle',
+    message: '',
+    productKey: '',
+    validatedCode: '',
+  });
   const githubTimeoutRef = useRef(null);
   const githubButtonText = t(githubButtonTextKeyByState[githubButtonState]);
 
@@ -131,6 +138,7 @@ const RegisterForm = () => {
   }, [statusState?.status]);
   const hasCustomOAuthProviders =
     (status.custom_oauth_providers || []).length > 0;
+  const registrationCodeRequired = status?.registration_code_required !== false;
   const hasOAuthRegisterOptions = Boolean(
     status.github_oauth ||
       status.discord_oauth ||
@@ -212,7 +220,87 @@ const RegisterForm = () => {
   };
 
   function handleChange(name, value) {
+    if (name === 'registration_code') {
+      setRegistrationCodeValidation({
+        status: 'idle',
+        message: '',
+        productKey: '',
+        validatedCode: '',
+      });
+    }
     setInputs((inputs) => ({ ...inputs, [name]: value }));
+  }
+
+  async function validateRegistrationCode(options = {}) {
+    const { silent = false } = options;
+    const code = inputs.registration_code?.trim();
+    if (!code) {
+      if (!silent && registrationCodeRequired) {
+        showInfo('请输入注册码！');
+      }
+      setRegistrationCodeValidation({
+        status: 'idle',
+        message: '',
+        productKey: '',
+        validatedCode: '',
+      });
+      return !registrationCodeRequired;
+    }
+
+    if (
+      registrationCodeValidation.status === 'valid' &&
+      registrationCodeValidation.validatedCode === code
+    ) {
+      return true;
+    }
+
+    setRegistrationCodeValidation((prev) => ({
+      ...prev,
+      status: 'validating',
+      message: t('正在验证注册码...'),
+    }));
+    try {
+      const res = await API.post('/api/registration-code/validate', {
+        registration_code: code,
+      });
+      const { success, message, data } = res.data;
+      if (!success) {
+        const errorMessage = message || t('注册码校验失败');
+        setRegistrationCodeValidation({
+          status: 'invalid',
+          message: errorMessage,
+          productKey: '',
+          validatedCode: code,
+        });
+        if (!silent) {
+          showError(errorMessage);
+        }
+        return false;
+      }
+      const productKey = data?.product_key || '';
+      const successMessage = productKey
+        ? t(`注册码可用，将授予 ${productKey} 资格`)
+        : t('注册码可用');
+      setRegistrationCodeValidation({
+        status: 'valid',
+        message: successMessage,
+        productKey,
+        validatedCode: code,
+      });
+      return true;
+    } catch (error) {
+      const errorMessage = error?.response?.data?.message || t('注册码校验失败，请重试');
+      setRegistrationCodeValidation({
+        status: 'invalid',
+        message: errorMessage,
+        productKey: '',
+        validatedCode: code,
+      });
+      if (!silent) {
+        showError(errorMessage);
+      }
+      return false;
+    }
   }
 
   async function handleSubmit(e) {
@@ -222,6 +310,14 @@ const RegisterForm = () => {
     }
     if (password !== password2) {
       showInfo('两次输入的密码不一致');
+      return;
+    }
+    if (registrationCodeRequired && !inputs.registration_code?.trim()) {
+      showInfo('请输入注册码！');
+      return;
+    }
+    if ((registrationCodeRequired || inputs.registration_code?.trim()) &&
+        !(await validateRegistrationCode())) {
       return;
     }
     if (username && password) {
@@ -234,10 +330,14 @@ const RegisterForm = () => {
         if (!affCode) {
           affCode = localStorage.getItem('aff');
         }
-        inputs.aff_code = affCode;
+        const payload = {
+          ...inputs,
+          aff_code: affCode,
+          registration_code: inputs.registration_code?.trim() || '',
+        };
         const res = await API.post(
           `/api/user/register?turnstile=${turnstileToken}`,
-          inputs,
+          payload,
         );
         const { success, message } = res.data;
         if (success) {
@@ -601,6 +701,49 @@ const RegisterForm = () => {
                   onChange={(value) => handleChange('password2', value)}
                   prefix={<IconLock />}
                 />
+
+                <Form.Input
+                  field='registration_code'
+                  label={t('注册码')}
+                  placeholder={
+                    registrationCodeRequired
+                      ? t('请输入注册码')
+                      : t('请输入注册码（如有）')
+                  }
+                  name='registration_code'
+                  onChange={(value) => handleChange('registration_code', value)}
+                  onBlur={() => {
+                    if (inputs.registration_code?.trim()) {
+                      void validateRegistrationCode({ silent: true });
+                    }
+                  }}
+                  prefix={<IconKey />}
+                  suffix={
+                    <Button
+                      theme='borderless'
+                      type='primary'
+                      loading={registrationCodeValidation.status === 'validating'}
+                      onClick={() => void validateRegistrationCode()}
+                    >
+                      {t('验证注册码')}
+                    </Button>
+                  }
+                />
+                {registrationCodeValidation.status !== 'idle' && (
+                  <Text
+                    size='small'
+                    type={
+                      registrationCodeValidation.status === 'invalid'
+                        ? 'danger'
+                        : registrationCodeValidation.status === 'valid'
+                          ? 'success'
+                          : 'tertiary'
+                    }
+                    className='mt-1 block'
+                  >
+                    {registrationCodeValidation.message}
+                  </Text>
+                )}
 
                 {showEmailVerification && (
                   <>

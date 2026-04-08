@@ -22,11 +22,21 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type RegisterRequest struct {
+	Username         string `json:"username" validate:"required,max=20"`
+	Password         string `json:"password" validate:"required,min=8,max=20"`
+	Email            string `json:"email" validate:"max=50"`
+	VerificationCode string `json:"verification_code"`
+	AffCode          string `json:"aff_code"`
+	RegistrationCode string `json:"registration_code"`
 }
 
 func Login(c *gin.Context) {
@@ -137,27 +147,31 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserPasswordRegisterDisabled)
 		return
 	}
-	var user model.User
-	err := json.NewDecoder(c.Request.Body).Decode(&user)
+	var registerRequest RegisterRequest
+	err := common.DecodeJson(c.Request.Body, &registerRequest)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
-	if err := common.Validate.Struct(&user); err != nil {
+	if err := common.Validate.Struct(&registerRequest); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
 	}
+	if common.RegistrationCodeRequired && strings.TrimSpace(registerRequest.RegistrationCode) == "" {
+		common.ApiErrorMsg(c, "注册码不能为空")
+		return
+	}
 	if common.EmailVerificationEnabled {
-		if user.Email == "" || user.VerificationCode == "" {
+		if registerRequest.Email == "" || registerRequest.VerificationCode == "" {
 			common.ApiErrorI18n(c, i18n.MsgUserEmailVerificationRequired)
 			return
 		}
-		if !common.VerifyCodeWithKey(user.Email, user.VerificationCode, common.EmailVerificationPurpose) {
+		if !common.VerifyCodeWithKey(registerRequest.Email, registerRequest.VerificationCode, common.EmailVerificationPurpose) {
 			common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
 			return
 		}
 	}
-	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
+	exist, err := model.CheckUserExistOrDeleted(registerRequest.Username, registerRequest.Email)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
 		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
@@ -167,29 +181,58 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserExists)
 		return
 	}
-	affCode := user.AffCode // this code is the inviter's code, not the user's own code
+	affCode := registerRequest.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
-		Username:    user.Username,
-		Password:    user.Password,
-		DisplayName: user.Username,
+		Username:    registerRequest.Username,
+		Password:    registerRequest.Password,
+		DisplayName: registerRequest.Username,
 		InviterId:   inviterId,
 		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
 	}
-	if common.EmailVerificationEnabled {
-		cleanUser.Email = user.Email
+	if registerRequest.Email != "" {
+		cleanUser.Email = registerRequest.Email
 	}
-	if err := cleanUser.Insert(inviterId); err != nil {
+
+	err = model.DB.Transaction(func(tx *gorm.DB) error {
+		productKey := common.ProductKeyNovel
+		sourceType := "register"
+		sourceId := 0
+		var registrationCode *model.RegistrationCode
+		if strings.TrimSpace(registerRequest.RegistrationCode) != "" {
+			registrationCode, err = model.ValidateRegistrationCodeTx(tx, registerRequest.RegistrationCode)
+			if err != nil {
+				return err
+			}
+			productKey = registrationCode.ProductKey
+			sourceType = common.EntitlementSourceTypeRegistrationCode
+			sourceId = registrationCode.Id
+		}
+		if err := cleanUser.InsertWithTx(tx, inviterId); err != nil {
+			return err
+		}
+		if err := model.GrantUserProductEntitlementTx(tx, &model.UserProductEntitlement{
+			UserId:     cleanUser.Id,
+			ProductKey: productKey,
+			Status:     common.UserProductEntitlementStatusEnabled,
+			SourceType: sourceType,
+			SourceId:   sourceId,
+			Notes:      fmt.Sprintf("注册获得产品资格，source=%s", sourceType),
+		}); err != nil {
+			return err
+		}
+		if registrationCode != nil {
+			if err := registrationCode.ConsumeForUserTx(tx, cleanUser.Id, c.ClientIP(), "register"); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-
-	// 获取插入后的用户ID
-	var insertedUser model.User
-	if err := model.DB.Where("username = ?", cleanUser.Username).First(&insertedUser).Error; err != nil {
-		common.ApiErrorI18n(c, i18n.MsgUserRegisterFailed)
-		return
-	}
+	cleanUser.FinalizeOAuthUserCreation(inviterId)
 	// 生成默认令牌
 	if constant.GenerateDefaultToken {
 		key, err := common.GenerateKey()
@@ -200,7 +243,7 @@ func Register(c *gin.Context) {
 		}
 		// 生成默认令牌
 		token := model.Token{
-			UserId:             insertedUser.Id, // 使用插入后的用户ID
+			UserId:             cleanUser.Id,
 			Name:               cleanUser.Username + "的初始令牌",
 			Key:                key,
 			CreatedTime:        common.GetTimestamp(),
@@ -417,6 +460,38 @@ func GetSelf(c *gin.Context) {
 		"data":    responseData,
 	})
 	return
+}
+
+func GetSelfEntitlements(c *gin.Context) {
+	userId := c.GetInt("id")
+	entitlements, err := model.GetUserProductEntitlements(userId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	hasNovelProduct, err := model.HasActiveProductEntitlement(userId, common.ProductKeyNovel)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	items := make([]gin.H, 0, len(entitlements))
+	for _, entitlement := range entitlements {
+		items = append(items, gin.H{
+			"id":          entitlement.Id,
+			"user_id":     entitlement.UserId,
+			"product_key": entitlement.ProductKey,
+			"status":      entitlement.Status,
+			"source_type": entitlement.SourceType,
+			"source_id":   entitlement.SourceId,
+			"granted_at":  entitlement.GrantedAt,
+			"expires_at":  entitlement.ExpiresAt,
+			"notes":       entitlement.Notes,
+		})
+	}
+	common.ApiSuccess(c, gin.H{
+		"items":             items,
+		"has_novel_product": hasNovelProduct,
+	})
 }
 
 // 计算用户权限的辅助函数
