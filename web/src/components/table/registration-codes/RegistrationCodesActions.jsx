@@ -19,13 +19,20 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import { Button } from '@douyinfe/semi-ui';
+import { REGISTRATION_CODE_STATUS } from '../../../constants/registration-code.constants';
 
 const RegistrationCodesActions = ({
   selectedKeys,
   setEditingRegistrationCode,
   setShowEdit,
   batchCopyRegistrationCodes,
+  batchUpdateRegistrationCodeStatus,
+  batchDeleteRegistrationCodes,
   exportCurrentRegistrationCodes,
+  exportSelectedRegistrationCodes,
+  openImportModal,
+  openHistoryModal,
+  openBatchSummaryModal,
   t,
 }) => {
   const handleAddRegistrationCode = () => {
@@ -54,6 +61,77 @@ const RegistrationCodesActions = ({
         disabled={selectedKeys.length === 0}
       >
         {t('复制所选注册码到剪贴板')}
+      </Button>
+
+      <Button
+        type='secondary'
+        className='flex-1 md:flex-initial'
+        onClick={() =>
+          batchUpdateRegistrationCodeStatus(REGISTRATION_CODE_STATUS.ENABLED)
+        }
+        size='small'
+        disabled={selectedKeys.length === 0}
+      >
+        {t('启用所选')}
+      </Button>
+
+      <Button
+        type='warning'
+        className='flex-1 md:flex-initial'
+        onClick={() =>
+          batchUpdateRegistrationCodeStatus(REGISTRATION_CODE_STATUS.DISABLED)
+        }
+        size='small'
+        disabled={selectedKeys.length === 0}
+      >
+        {t('禁用所选')}
+      </Button>
+
+      <Button
+        type='danger'
+        className='flex-1 md:flex-initial'
+        onClick={batchDeleteRegistrationCodes}
+        size='small'
+        disabled={selectedKeys.length === 0}
+      >
+        {t('删除所选')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        className='flex-1 md:flex-initial'
+        onClick={openImportModal}
+        size='small'
+      >
+        {t('导入 CSV')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        className='flex-1 md:flex-initial'
+        onClick={openHistoryModal}
+        size='small'
+      >
+        {t('操作历史')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        className='flex-1 md:flex-initial'
+        onClick={openBatchSummaryModal}
+        size='small'
+      >
+        {t('批次概览')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        className='flex-1 md:flex-initial'
+        onClick={exportSelectedRegistrationCodes}
+        size='small'
+        disabled={selectedKeys.length === 0}
+      >
+        {t('导出所选')}
       </Button>
 
       <Button

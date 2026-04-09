@@ -17,21 +17,53 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect } from 'react';
-import { API, showError, showSuccess, copy } from '../../helpers';
+import { useEffect, useState } from 'react';
+import { Modal } from '@douyinfe/semi-ui';
+import { useTranslation } from 'react-i18next';
+import {
+  API,
+  copy,
+  downloadTextAsFile,
+  renderQuota,
+  showError,
+  showSuccess,
+  timestamp2string,
+} from '../../helpers';
 import { ITEMS_PER_PAGE } from '../../constants';
 import {
   REDEMPTION_ACTIONS,
   REDEMPTION_STATUS,
 } from '../../constants/redemption.constants';
-import { Modal } from '@douyinfe/semi-ui';
-import { useTranslation } from 'react-i18next';
 import { useTableCompactMode } from '../common/useTableCompactMode';
+
+const normalizeItems = (data) => {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
+};
+
+const dateValueToTimestamp = (value, endOfDay = false) => {
+  if (!value) return 0;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999);
+  }
+  return Math.floor(date.getTime() / 1000);
+};
+
+const getRowsBatchNo = (rows = []) => {
+  const values = [
+    ...new Set(rows.map((item) => item?.batch_no).filter(Boolean)),
+  ];
+  if (values.length === 0) return '';
+  if (values.length === 1) return values[0];
+  return `${values[0]} +${values.length - 1}`;
+};
 
 export const useRedemptionsData = () => {
   const { t } = useTranslation();
 
-  // Basic state
   const [redemptions, setRedemptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -39,93 +71,308 @@ export const useRedemptionsData = () => {
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [tokenCount, setTokenCount] = useState(0);
   const [selectedKeys, setSelectedKeys] = useState([]);
-
-  // Edit state
-  const [editingRedemption, setEditingRedemption] = useState({
-    id: undefined,
-  });
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [editingRedemption, setEditingRedemption] = useState({ id: undefined });
   const [showEdit, setShowEdit] = useState(false);
-
-  // Form API
   const [formApi, setFormApi] = useState(null);
-
-  // UI state
   const [compactMode, setCompactMode] = useTableCompactMode('redemptions');
 
-  // Form state
   const formInitValues = {
     searchKeyword: '',
+    searchStatus: '',
+    searchAvailability: '',
+    searchBatchNo: '',
+    searchCampaignName: '',
+    searchChannel: '',
+    searchSourcePlatform: '',
+    searchExternalOrderNo: '',
+    searchCreatedBy: '',
+    searchCreatedFrom: null,
+    searchCreatedTo: null,
   };
 
-  // Get form values
   const getFormValues = () => {
-    const formValues = formApi ? formApi.getValues() : {};
+    const values = formApi?.getValues?.() || {};
     return {
-      searchKeyword: formValues.searchKeyword || '',
+      searchKeyword: values.searchKeyword || '',
+      searchStatus: values.searchStatus || '',
+      searchAvailability: values.searchAvailability || '',
+      searchBatchNo: values.searchBatchNo || '',
+      searchCampaignName: values.searchCampaignName || '',
+      searchChannel: values.searchChannel || '',
+      searchSourcePlatform: values.searchSourcePlatform || '',
+      searchExternalOrderNo: values.searchExternalOrderNo || '',
+      searchCreatedBy: values.searchCreatedBy || '',
+      searchCreatedFrom: values.searchCreatedFrom || null,
+      searchCreatedTo: values.searchCreatedTo || null,
     };
   };
 
-  // Set redemption data format
-  const setRedemptionFormat = (redemptions) => {
-    setRedemptions(redemptions);
+  const buildFilterSummary = () => {
+    const values = getFormValues();
+    const pairs = [
+      [t('关键词'), values.searchKeyword?.trim()],
+      [t('状态'), values.searchStatus],
+      [t('可用性'), values.searchAvailability],
+      [t('批次号'), values.searchBatchNo?.trim()],
+      [t('活动名称'), values.searchCampaignName?.trim()],
+      [t('渠道'), values.searchChannel?.trim()],
+      [t('来源平台'), values.searchSourcePlatform?.trim()],
+      [t('外部订单号'), values.searchExternalOrderNo?.trim()],
+      [t('创建人'), values.searchCreatedBy?.trim()],
+      [
+        t('创建区间'),
+        values.searchCreatedFrom || values.searchCreatedTo
+          ? `${values.searchCreatedFrom ? timestamp2string(dateValueToTimestamp(values.searchCreatedFrom)) : '-'} ~ ${
+              values.searchCreatedTo
+                ? timestamp2string(
+                    dateValueToTimestamp(values.searchCreatedTo, true),
+                  )
+                : '-'
+            }`
+          : '',
+      ],
+    ].filter(([, value]) => value);
+    return pairs.map(([label, value]) => `${label}=${value}`).join('；');
   };
 
-  // Load redemption list
-  const loadRedemptions = async (page = 1, pageSize) => {
-    setLoading(true);
+  const buildRedemptionQuery = (page = 1, localPageSize = pageSize) => {
+    const values = getFormValues();
+    const params = new URLSearchParams();
+    params.set('p', String(page));
+    params.set('page_size', String(localPageSize));
+    if (values.searchKeyword?.trim())
+      params.set('keyword', values.searchKeyword.trim());
+    if (values.searchStatus) params.set('status', String(values.searchStatus));
+    if (values.searchAvailability)
+      params.set('availability', String(values.searchAvailability));
+    if (values.searchBatchNo?.trim())
+      params.set('batch_no', values.searchBatchNo.trim());
+    if (values.searchCampaignName?.trim())
+      params.set('campaign_name', values.searchCampaignName.trim());
+    if (values.searchChannel?.trim())
+      params.set('channel', values.searchChannel.trim());
+    if (values.searchSourcePlatform?.trim())
+      params.set('source_platform', values.searchSourcePlatform.trim());
+    if (values.searchExternalOrderNo?.trim())
+      params.set('external_order_no', values.searchExternalOrderNo.trim());
+    if (values.searchCreatedBy?.trim())
+      params.set('created_by', values.searchCreatedBy.trim());
+    const createdFrom = dateValueToTimestamp(values.searchCreatedFrom);
+    const createdTo = dateValueToTimestamp(values.searchCreatedTo, true);
+    if (createdFrom > 0) params.set('created_from', String(createdFrom));
+    if (createdTo > 0) params.set('created_to', String(createdTo));
+    return params.toString();
+  };
+
+  const clearSelection = () => {
+    setSelectedKeys([]);
+    setSelectedRowKeys([]);
+  };
+
+  const getSelectedIds = () =>
+    selectedKeys
+      .map((item) => Number(item?.id || 0))
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+  const fetchRedemptions = async (
+    page = 1,
+    localPageSize = pageSize,
+    stateSetter = setLoading,
+  ) => {
+    stateSetter(true);
     try {
       const res = await API.get(
-        `/api/redemption/?p=${page}&page_size=${pageSize}`,
+        `/api/redemption/?${buildRedemptionQuery(page, localPageSize)}`,
       );
       const { success, message, data } = res.data;
       if (success) {
-        const newPageData = data.items;
-        setActivePage(data.page <= 0 ? 1 : data.page);
-        setTokenCount(data.total);
-        setRedemptionFormat(newPageData);
+        setActivePage(data?.page <= 0 ? 1 : data?.page || 1);
+        setTokenCount(data?.total || 0);
+        setRedemptions(normalizeItems(data));
       } else {
         showError(message);
       }
     } catch (error) {
       showError(error.message);
+    } finally {
+      stateSetter(false);
     }
-    setLoading(false);
   };
 
-  // Search redemption codes
-  const searchRedemptions = async () => {
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
-      await loadRedemptions(1, pageSize);
+  const loadRedemptions = async (page = 1, localPageSize = pageSize) => {
+    await fetchRedemptions(page, localPageSize, setLoading);
+  };
+
+  const searchRedemptions = async (page = 1, localPageSize = pageSize) => {
+    await fetchRedemptions(page, localPageSize, setSearching);
+  };
+
+  const refresh = async (page = activePage) => {
+    await loadRedemptions(page, pageSize);
+  };
+
+  const handlePageChange = (page) => {
+    setActivePage(page);
+    loadRedemptions(page, pageSize).then();
+  };
+
+  const handlePageSizeChange = (size) => {
+    setPageSize(size);
+    setActivePage(1);
+    loadRedemptions(1, size).then();
+  };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (rowKeys, selectedRows) => {
+      setSelectedRowKeys(rowKeys);
+      setSelectedKeys(selectedRows);
+    },
+  };
+
+  const isExpired = (record) =>
+    record.status === REDEMPTION_STATUS.UNUSED &&
+    Number(record.expired_time || 0) !== 0 &&
+    Number(record.expired_time || 0) < Math.floor(Date.now() / 1000);
+
+  const handleRow = (record) => {
+    if (record.status !== REDEMPTION_STATUS.UNUSED || isExpired(record)) {
+      return {
+        style: {
+          background: 'var(--semi-color-disabled-border)',
+        },
+      };
+    }
+    return {};
+  };
+
+  const copyText = async (text) => {
+    if (await copy(text)) {
+      showSuccess(t('已复制到剪贴板！'));
+    } else {
+      Modal.error({
+        title: t('无法复制到剪贴板，请手动复制'),
+        content: text,
+        size: 'large',
+      });
+    }
+  };
+
+  const recordExportHistory = async ({
+    rows,
+    fileName,
+    targetSummary,
+    notes,
+  }) => {
+    try {
+      await API.post('/api/code-center/history/export', {
+        code_type: 'redemption',
+        file_name: fileName,
+        batch_no: getRowsBatchNo(rows),
+        total_count: rows.length,
+        success_count: rows.length,
+        failed_count: 0,
+        target_summary: targetSummary,
+        filters: buildFilterSummary(),
+        notes,
+      });
+    } catch (error) {
+      showError(
+        t('导出已完成，但导出历史记录写入失败：{{message}}', {
+          message: error.message,
+        }),
+      );
+    }
+  };
+
+  const exportRedemptionRows = async (rows, filename, targetSummary) => {
+    if (!rows.length) {
+      showError(t('当前列表没有可导出的兑换码'));
       return;
     }
 
-    setSearching(true);
-    try {
-      const res = await API.get(
-        `/api/redemption/search?keyword=${searchKeyword}&p=1&page_size=${pageSize}`,
-      );
-      const { success, message, data } = res.data;
-      if (success) {
-        const newPageData = data.items;
-        setActivePage(data.page || 1);
-        setTokenCount(data.total);
-        setRedemptionFormat(newPageData);
-      } else {
-        showError(message);
-      }
-    } catch (error) {
-      showError(error.message);
-    }
-    setSearching(false);
+    const csvRows = [
+      [
+        'id',
+        'name',
+        'key',
+        'status',
+        'quota',
+        'batch_no',
+        'campaign_name',
+        'channel',
+        'source_platform',
+        'external_order_no',
+        'notes',
+        'created_time',
+        'expired_time',
+        'redeemed_time',
+        'used_user_id',
+      ].join(','),
+    ];
+
+    rows.forEach((item) => {
+      const cells = [
+        item.id,
+        item.name || '',
+        item.key || '',
+        item.status || '',
+        renderQuota(parseInt(item.quota || 0, 10)),
+        item.batch_no || '',
+        item.campaign_name || '',
+        item.channel || '',
+        item.source_platform || '',
+        item.external_order_no || '',
+        item.notes || '',
+        item.created_time ? timestamp2string(item.created_time) : '',
+        item.expired_time ? timestamp2string(item.expired_time) : '',
+        item.redeemed_time ? timestamp2string(item.redeemed_time) : '',
+        item.used_user_id || 0,
+      ].map((cell) => `"${String(cell).replaceAll('"', '""')}"`);
+      csvRows.push(cells.join(','));
+    });
+
+    downloadTextAsFile(csvRows.join('\n'), filename);
+    await recordExportHistory({
+      rows,
+      fileName: filename,
+      targetSummary,
+      notes: t('前端本地导出 CSV'),
+    });
   };
 
-  // Manage redemption codes (CRUD operations)
+  const exportCurrentRedemptions = async () => {
+    const fileName = `redemptions-page-${activePage}.csv`;
+    await exportRedemptionRows(redemptions, fileName, t('导出当前页兑换码'));
+    showSuccess(t('兑换码列表导出成功'));
+  };
+
+  const exportSelectedRedemptions = async () => {
+    if (selectedKeys.length === 0) {
+      showError(t('请至少选择一个兑换码！'));
+      return;
+    }
+    const fileName = 'redemptions-selected.csv';
+    await exportRedemptionRows(selectedKeys, fileName, t('导出所选兑换码'));
+    showSuccess(t('所选兑换码导出成功'));
+  };
+
+  const batchCopyRedemptions = async () => {
+    if (selectedKeys.length === 0) {
+      showError(t('请至少选择一个兑换码！'));
+      return;
+    }
+    const keys = selectedKeys
+      .map((item) => `${item.name || '-'}    ${item.key || ''}`)
+      .join('\n');
+    await copyText(keys);
+  };
+
   const manageRedemption = async (id, action, record) => {
     setLoading(true);
-    let data = { id };
+    const data = { id };
     let res;
-
     try {
       switch (action) {
         case REDEMPTION_ACTIONS.DELETE:
@@ -143,158 +390,144 @@ export const useRedemptionsData = () => {
           throw new Error('Unknown operation type');
       }
 
-      const { success, message } = res.data;
+      const { success, message, data: responseData } = res.data;
       if (success) {
         showSuccess(t('操作成功完成！'));
-        let redemption = res.data.data;
-        let newRedemptions = [...redemptions];
-        if (action !== REDEMPTION_ACTIONS.DELETE) {
-          record.status = redemption.status;
+        if (action !== REDEMPTION_ACTIONS.DELETE && responseData) {
+          record.status = responseData.status;
         }
-        setRedemptions(newRedemptions);
+        clearSelection();
+        await refresh();
       } else {
         showError(message);
       }
     } catch (error) {
       showError(error.message);
-    }
-    setLoading(false);
-  };
-
-  // Refresh data
-  const refresh = async (page = activePage) => {
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
-      await loadRedemptions(page, pageSize);
-    } else {
-      await searchRedemptions();
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Handle page change
-  const handlePageChange = (page) => {
-    setActivePage(page);
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
-      loadRedemptions(page, pageSize);
-    } else {
-      searchRedemptions();
-    }
-  };
-
-  // Handle page size change
-  const handlePageSizeChange = (size) => {
-    setPageSize(size);
-    setActivePage(1);
-    const { searchKeyword } = getFormValues();
-    if (searchKeyword === '') {
-      loadRedemptions(1, size);
-    } else {
-      searchRedemptions();
-    }
-  };
-
-  // Row selection configuration
-  const rowSelection = {
-    onSelect: (record, selected) => {},
-    onSelectAll: (selected, selectedRows) => {},
-    onChange: (selectedRowKeys, selectedRows) => {
-      setSelectedKeys(selectedRows);
-    },
-  };
-
-  // Row style handling - using isExpired function
-  const handleRow = (record, index) => {
-    // Local isExpired function
-    const isExpired = (rec) => {
-      return (
-        rec.status === REDEMPTION_STATUS.UNUSED &&
-        rec.expired_time !== 0 &&
-        rec.expired_time < Math.floor(Date.now() / 1000)
-      );
-    };
-
-    if (record.status !== REDEMPTION_STATUS.UNUSED || isExpired(record)) {
-      return {
-        style: {
-          background: 'var(--semi-color-disabled-border)',
-        },
-      };
-    } else {
-      return {};
-    }
-  };
-
-  // Copy text
-  const copyText = async (text) => {
-    if (await copy(text)) {
-      showSuccess('已复制到剪贴板！');
-    } else {
-      Modal.error({
-        title: '无法复制到剪贴板，请手动复制',
-        content: text,
-        size: 'large',
-      });
-    }
-  };
-
-  // Batch copy redemption codes
-  const batchCopyRedemptions = async () => {
-    if (selectedKeys.length === 0) {
+  const batchUpdateRedemptionsStatus = async (status) => {
+    const ids = getSelectedIds();
+    if (ids.length === 0) {
       showError(t('请至少选择一个兑换码！'));
       return;
     }
 
-    let keys = '';
-    for (let i = 0; i < selectedKeys.length; i++) {
-      keys += selectedKeys[i].name + '    ' + selectedKeys[i].key + '\n';
+    setLoading(true);
+    try {
+      const res = await API.post('/api/redemption/batch/status', {
+        ids,
+        status,
+      });
+      const { success, message, data } = res.data;
+      if (success) {
+        showSuccess(
+          t(
+            status === REDEMPTION_STATUS.UNUSED
+              ? '已启用 {{count}} 个兑换码'
+              : '已禁用 {{count}} 个兑换码',
+            { count: Number(data || ids.length) },
+          ),
+        );
+        clearSelection();
+        await refresh();
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      setLoading(false);
     }
-    await copyText(keys);
   };
 
-  // Batch delete redemption codes (clear invalid)
-  const batchDeleteRedemptions = async () => {
+  const batchDeleteSelectedRedemptions = async () => {
+    const ids = getSelectedIds();
+    if (ids.length === 0) {
+      showError(t('请至少选择一个兑换码！'));
+      return;
+    }
+
+    Modal.confirm({
+      title: t('确定删除所选兑换码？'),
+      content: t('共 {{count}} 个兑换码，此操作不可撤销。', {
+        count: ids.length,
+      }),
+      onOk: async () => {
+        setLoading(true);
+        try {
+          const res = await API.post('/api/redemption/batch/delete', { ids });
+          const { success, message, data } = res.data;
+          if (success) {
+            showSuccess(
+              t('已删除 {{count}} 个兑换码', {
+                count: Number(data || ids.length),
+              }),
+            );
+            clearSelection();
+            await refresh();
+          } else {
+            showError(message);
+          }
+        } catch (error) {
+          showError(error.message);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+  const batchDeleteInvalidRedemptions = async () => {
     Modal.confirm({
       title: t('确定清除所有失效兑换码？'),
       content: t('将删除已使用、已禁用及过期的兑换码，此操作不可撤销。'),
       onOk: async () => {
         setLoading(true);
-        const res = await API.delete('/api/redemption/invalid');
-        const { success, message, data } = res.data;
-        if (success) {
-          showSuccess(t('已删除 {{count}} 条失效兑换码', { count: data }));
-          await refresh();
-        } else {
-          showError(message);
+        try {
+          const res = await API.delete('/api/redemption/invalid');
+          const { success, message, data } = res.data;
+          if (success) {
+            showSuccess(t('已删除 {{count}} 条失效兑换码', { count: data }));
+            clearSelection();
+            await refresh();
+          } else {
+            showError(message);
+          }
+        } catch (error) {
+          showError(error.message);
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       },
     });
   };
 
-  // Close edit modal
   const closeEdit = () => {
     setShowEdit(false);
     setTimeout(() => {
-      setEditingRedemption({
-        id: undefined,
-      });
+      setEditingRedemption({ id: undefined });
     }, 500);
   };
 
-  // Remove record (for UI update after deletion)
   const removeRecord = (key) => {
-    let newDataSource = [...redemptions];
+    const nextList = [...redemptions];
     if (key != null) {
-      let idx = newDataSource.findIndex((data) => data.key === key);
+      const idx = nextList.findIndex((item) => item.key === key);
       if (idx > -1) {
-        newDataSource.splice(idx, 1);
-        setRedemptions(newDataSource);
+        nextList.splice(idx, 1);
+        setRedemptions(nextList);
       }
     }
   };
 
-  // Initialize data loading
+  const handleImportCompleted = async () => {
+    clearSelection();
+    await refresh(1);
+  };
+
   useEffect(() => {
     loadRedemptions(1, pageSize)
       .then()
@@ -304,7 +537,6 @@ export const useRedemptionsData = () => {
   }, [pageSize]);
 
   return {
-    // Data state
     redemptions,
     loading,
     searching,
@@ -312,28 +544,20 @@ export const useRedemptionsData = () => {
     pageSize,
     tokenCount,
     selectedKeys,
-
-    // Edit state
+    selectedRowKeys,
     editingRedemption,
     showEdit,
-
-    // Form state
     formApi,
     formInitValues,
-
-    // UI state
     compactMode,
     setCompactMode,
-
-    // Data operations
     loadRedemptions,
     searchRedemptions,
     manageRedemption,
     refresh,
     copyText,
     removeRecord,
-
-    // State updates
+    clearSelection,
     setActivePage,
     setPageSize,
     setSelectedKeys,
@@ -341,20 +565,21 @@ export const useRedemptionsData = () => {
     setShowEdit,
     setFormApi,
     setLoading,
-
-    // Event handlers
     handlePageChange,
     handlePageSizeChange,
     rowSelection,
     handleRow,
     closeEdit,
     getFormValues,
-
-    // Batch operations
     batchCopyRedemptions,
-    batchDeleteRedemptions,
-
-    // Translation function
+    batchUpdateRedemptionsStatus,
+    batchDeleteSelectedRedemptions,
+    batchDeleteInvalidRedemptions,
+    exportCurrentRedemptions,
+    exportSelectedRedemptions,
+    handleImportCompleted,
+    buildRedemptionQuery,
+    buildFilterSummary,
     t,
   };
 };

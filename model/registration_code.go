@@ -12,20 +12,25 @@ import (
 )
 
 type RegistrationCode struct {
-	Id         int            `json:"id"`
-	Code       string         `json:"code" gorm:"type:varchar(64);uniqueIndex"`
-	Name       string         `json:"name" gorm:"index"`
-	Status     int            `json:"status" gorm:"default:1"`
-	ProductKey string         `json:"product_key" gorm:"type:varchar(64);index"`
-	ExpiresAt  int64          `json:"expires_at" gorm:"bigint"`
-	MaxUses    int            `json:"max_uses" gorm:"default:1"`
-	UsedCount  int            `json:"used_count" gorm:"default:0"`
-	CreatedBy  int            `json:"created_by" gorm:"index"`
-	Notes      string         `json:"notes" gorm:"type:text"`
-	CreatedAt  int64          `json:"created_at" gorm:"bigint"`
-	UpdatedAt  int64          `json:"updated_at" gorm:"bigint"`
-	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index"`
-	Count      int            `json:"count" gorm:"-:all"`
+	Id              int            `json:"id"`
+	Code            string         `json:"code" gorm:"type:varchar(64);uniqueIndex"`
+	Name            string         `json:"name" gorm:"index"`
+	Status          int            `json:"status" gorm:"default:1"`
+	ProductKey      string         `json:"product_key" gorm:"type:varchar(64);index"`
+	ExpiresAt       int64          `json:"expires_at" gorm:"bigint"`
+	MaxUses         int            `json:"max_uses" gorm:"default:1"`
+	UsedCount       int            `json:"used_count" gorm:"default:0"`
+	CreatedBy       int            `json:"created_by" gorm:"index"`
+	BatchNo         string         `json:"batch_no" gorm:"type:varchar(128);index"`
+	CampaignName    string         `json:"campaign_name" gorm:"type:varchar(128);index"`
+	Channel         string         `json:"channel" gorm:"type:varchar(64);index"`
+	SourcePlatform  string         `json:"source_platform" gorm:"type:varchar(64);index"`
+	ExternalOrderNo string         `json:"external_order_no" gorm:"type:varchar(128);index"`
+	Notes           string         `json:"notes" gorm:"type:text"`
+	CreatedAt       int64          `json:"created_at" gorm:"bigint"`
+	UpdatedAt       int64          `json:"updated_at" gorm:"bigint"`
+	DeletedAt       gorm.DeletedAt `json:"-" gorm:"index"`
+	Count           int            `json:"count" gorm:"-:all"`
 }
 
 type RegistrationCodeUsage struct {
@@ -52,10 +57,18 @@ type RegistrationCodeUsageView struct {
 }
 
 type RegistrationCodeQuery struct {
-	Keyword      string
-	Status       int
-	ProductKey   string
-	Availability string
+	Keyword         string
+	Status          int
+	ProductKey      string
+	Availability    string
+	BatchNo         string
+	CampaignName    string
+	Channel         string
+	SourcePlatform  string
+	ExternalOrderNo string
+	CreatedBy       int
+	CreatedFrom     int64
+	CreatedTo       int64
 }
 
 func normalizeRegistrationCode(code string) string {
@@ -67,6 +80,12 @@ func (registrationCode *RegistrationCode) BeforeCreate(tx *gorm.DB) error {
 	if registrationCode.Code == "" {
 		registrationCode.Code = strings.ToUpper(common.GetUUID())
 	}
+	registrationCode.BatchNo = strings.TrimSpace(registrationCode.BatchNo)
+	registrationCode.CampaignName = strings.TrimSpace(registrationCode.CampaignName)
+	registrationCode.Channel = strings.TrimSpace(registrationCode.Channel)
+	registrationCode.SourcePlatform = strings.TrimSpace(registrationCode.SourcePlatform)
+	registrationCode.ExternalOrderNo = strings.TrimSpace(registrationCode.ExternalOrderNo)
+	registrationCode.Notes = strings.TrimSpace(registrationCode.Notes)
 	if registrationCode.ProductKey == "" {
 		registrationCode.ProductKey = common.ProductKeyNovel
 	}
@@ -85,6 +104,12 @@ func (registrationCode *RegistrationCode) BeforeUpdate(tx *gorm.DB) error {
 	if registrationCode.Code != "" {
 		registrationCode.Code = normalizeRegistrationCode(registrationCode.Code)
 	}
+	registrationCode.BatchNo = strings.TrimSpace(registrationCode.BatchNo)
+	registrationCode.CampaignName = strings.TrimSpace(registrationCode.CampaignName)
+	registrationCode.Channel = strings.TrimSpace(registrationCode.Channel)
+	registrationCode.SourcePlatform = strings.TrimSpace(registrationCode.SourcePlatform)
+	registrationCode.ExternalOrderNo = strings.TrimSpace(registrationCode.ExternalOrderNo)
+	registrationCode.Notes = strings.TrimSpace(registrationCode.Notes)
 	if registrationCode.ProductKey == "" {
 		registrationCode.ProductKey = common.ProductKeyNovel
 	}
@@ -121,8 +146,32 @@ func applyRegistrationCodeFilters(query *gorm.DB, filters RegistrationCodeQuery)
 	if filters.Status != 0 {
 		query = query.Where("status = ?", filters.Status)
 	}
+	if filters.CreatedBy > 0 {
+		query = query.Where("created_by = ?", filters.CreatedBy)
+	}
 	if productKey := strings.TrimSpace(filters.ProductKey); productKey != "" {
 		query = query.Where("product_key = ?", productKey)
+	}
+	if batchNo := strings.TrimSpace(filters.BatchNo); batchNo != "" {
+		query = query.Where("batch_no LIKE ?", "%"+batchNo+"%")
+	}
+	if campaignName := strings.TrimSpace(filters.CampaignName); campaignName != "" {
+		query = query.Where("campaign_name LIKE ?", "%"+campaignName+"%")
+	}
+	if channel := strings.TrimSpace(filters.Channel); channel != "" {
+		query = query.Where("channel LIKE ?", "%"+channel+"%")
+	}
+	if sourcePlatform := strings.TrimSpace(filters.SourcePlatform); sourcePlatform != "" {
+		query = query.Where("source_platform LIKE ?", "%"+sourcePlatform+"%")
+	}
+	if externalOrderNo := strings.TrimSpace(filters.ExternalOrderNo); externalOrderNo != "" {
+		query = query.Where("external_order_no LIKE ?", "%"+externalOrderNo+"%")
+	}
+	if filters.CreatedFrom > 0 {
+		query = query.Where("created_at >= ?", filters.CreatedFrom)
+	}
+	if filters.CreatedTo > 0 {
+		query = query.Where("created_at <= ?", filters.CreatedTo)
 	}
 	switch strings.ToLower(strings.TrimSpace(filters.Availability)) {
 	case "":
@@ -183,6 +232,40 @@ func SearchRegistrationCodes(keyword string, startIdx int, num int, filters Regi
 	return GetAllRegistrationCodes(startIdx, num, filters)
 }
 
+func GetRegistrationCodeBatchSummaries(filters RegistrationCodeQuery, limit int) ([]*CodeBatchSummary, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 100
+	}
+	now := common.GetTimestamp()
+	query, err := applyRegistrationCodeFilters(DB.Model(&RegistrationCode{}), filters)
+	if err != nil {
+		return nil, err
+	}
+	summaries := make([]*CodeBatchSummary, 0)
+	err = query.
+		Where("batch_no != ''").
+		Select(
+			`batch_no,
+			COUNT(*) AS total_count,
+			SUM(CASE WHEN status = ? AND (expires_at = 0 OR expires_at >= ?) AND (max_uses = 0 OR used_count < max_uses) THEN 1 ELSE 0 END) AS available_count,
+			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS enabled_count,
+			SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS disabled_count,
+			SUM(CASE WHEN max_uses > 0 AND used_count >= max_uses THEN 1 ELSE 0 END) AS exhausted_count,
+			SUM(CASE WHEN expires_at != 0 AND expires_at < ? THEN 1 ELSE 0 END) AS expired_count,
+			MAX(created_at) AS latest_created_at`,
+			common.RegistrationCodeStatusEnabled,
+			now,
+			common.RegistrationCodeStatusEnabled,
+			common.RegistrationCodeStatusDisabled,
+			now,
+		).
+		Group("batch_no").
+		Order("latest_created_at desc").
+		Limit(limit).
+		Scan(&summaries).Error
+	return summaries, err
+}
+
 func GetRegistrationCodeById(id int) (*RegistrationCode, error) {
 	if id == 0 {
 		return nil, errors.New("注册码 id 为空")
@@ -226,7 +309,7 @@ func (registrationCode *RegistrationCode) Insert() error {
 }
 
 func (registrationCode *RegistrationCode) Update() error {
-	return DB.Model(registrationCode).Select("name", "status", "product_key", "expires_at", "max_uses", "notes", "updated_at").Updates(registrationCode).Error
+	return DB.Model(registrationCode).Select("name", "status", "product_key", "expires_at", "max_uses", "batch_no", "campaign_name", "channel", "source_platform", "external_order_no", "notes", "updated_at").Updates(registrationCode).Error
 }
 
 func (registrationCode *RegistrationCode) Delete() error {
@@ -242,6 +325,27 @@ func DeleteRegistrationCodeById(id int) error {
 		return err
 	}
 	return registrationCode.Delete()
+}
+
+func BatchDeleteRegistrationCodes(ids []int) (int64, error) {
+	if len(ids) == 0 {
+		return 0, errors.New("ids 不能为空")
+	}
+	result := DB.Where("id IN ?", ids).Delete(&RegistrationCode{})
+	return result.RowsAffected, result.Error
+}
+
+func BatchUpdateRegistrationCodeStatus(ids []int, status int) (int64, error) {
+	if len(ids) == 0 {
+		return 0, errors.New("ids 不能为空")
+	}
+	if status != common.RegistrationCodeStatusEnabled && status != common.RegistrationCodeStatusDisabled {
+		return 0, errors.New("注册码状态无效")
+	}
+	result := DB.Model(&RegistrationCode{}).
+		Where("id IN ?", ids).
+		Update("status", status)
+	return result.RowsAffected, result.Error
 }
 
 func ValidateRegistrationCode(rawCode string) (*RegistrationCode, error) {
@@ -327,14 +431,19 @@ func BuildRegistrationCodes(createBy int, template RegistrationCode) ([]*Registr
 			code = strings.ToUpper(common.GetUUID())
 		}
 		registrationCode := &RegistrationCode{
-			Code:       code,
-			Name:       template.Name,
-			Status:     template.Status,
-			ProductKey: template.ProductKey,
-			ExpiresAt:  template.ExpiresAt,
-			MaxUses:    template.MaxUses,
-			CreatedBy:  createBy,
-			Notes:      template.Notes,
+			Code:            code,
+			Name:            template.Name,
+			Status:          template.Status,
+			ProductKey:      template.ProductKey,
+			ExpiresAt:       template.ExpiresAt,
+			MaxUses:         template.MaxUses,
+			CreatedBy:       createBy,
+			BatchNo:         template.BatchNo,
+			CampaignName:    template.CampaignName,
+			Channel:         template.Channel,
+			SourcePlatform:  template.SourcePlatform,
+			ExternalOrderNo: template.ExternalOrderNo,
+			Notes:           template.Notes,
 		}
 		createdCodes = append(createdCodes, registrationCode)
 		codes = append(codes, normalizeRegistrationCode(code))
@@ -358,6 +467,12 @@ func ValidateRegistrationCodeAdminPayload(registrationCode *RegistrationCode) er
 	if registrationCode.ProductKey == "" {
 		registrationCode.ProductKey = common.ProductKeyNovel
 	}
+	registrationCode.BatchNo = strings.TrimSpace(registrationCode.BatchNo)
+	registrationCode.CampaignName = strings.TrimSpace(registrationCode.CampaignName)
+	registrationCode.Channel = strings.TrimSpace(registrationCode.Channel)
+	registrationCode.SourcePlatform = strings.TrimSpace(registrationCode.SourcePlatform)
+	registrationCode.ExternalOrderNo = strings.TrimSpace(registrationCode.ExternalOrderNo)
+	registrationCode.Notes = strings.TrimSpace(registrationCode.Notes)
 	if registrationCode.Status == 0 {
 		registrationCode.Status = common.RegistrationCodeStatusEnabled
 	}

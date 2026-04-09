@@ -17,22 +17,22 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 import {
   API,
-  showError,
-  showSuccess,
   copy,
   downloadTextAsFile,
+  showError,
+  showSuccess,
   timestamp2string,
 } from '../../helpers';
 import { ITEMS_PER_PAGE } from '../../constants';
 import {
   REGISTRATION_CODE_ACTIONS,
-  REGISTRATION_CODE_STATUS,
   REGISTRATION_CODE_FILTER_AVAILABILITY,
+  REGISTRATION_CODE_STATUS,
 } from '../../constants/registration-code.constants';
 import { useTableCompactMode } from '../common/useTableCompactMode';
 
@@ -40,6 +40,25 @@ const normalizeItems = (data) => {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.items)) return data.items;
   return [];
+};
+
+const dateValueToTimestamp = (value, endOfDay = false) => {
+  if (!value) return 0;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 0;
+  if (endOfDay) {
+    date.setHours(23, 59, 59, 999);
+  }
+  return Math.floor(date.getTime() / 1000);
+};
+
+const getRowsBatchNo = (rows = []) => {
+  const values = [
+    ...new Set(rows.map((item) => item?.batch_no).filter(Boolean)),
+  ];
+  if (values.length === 0) return '';
+  if (values.length === 1) return values[0];
+  return `${values[0]} +${values.length - 1}`;
 };
 
 export const useRegistrationCodesData = () => {
@@ -52,6 +71,7 @@ export const useRegistrationCodesData = () => {
   const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
   const [totalCount, setTotalCount] = useState(0);
   const [selectedKeys, setSelectedKeys] = useState([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [editingRegistrationCode, setEditingRegistrationCode] = useState({
     id: undefined,
   });
@@ -59,51 +79,111 @@ export const useRegistrationCodesData = () => {
   const [showUsage, setShowUsage] = useState(false);
   const [usageTarget, setUsageTarget] = useState(null);
   const [formApi, setFormApi] = useState(null);
-  const [compactMode, setCompactMode] = useTableCompactMode(
-    'registration-codes',
-  );
+  const [compactMode, setCompactMode] =
+    useTableCompactMode('registration-codes');
 
   const formInitValues = {
     searchKeyword: '',
     searchStatus: '',
     searchProductKey: '',
     searchAvailability: '',
+    searchBatchNo: '',
+    searchCampaignName: '',
+    searchChannel: '',
+    searchSourcePlatform: '',
+    searchExternalOrderNo: '',
+    searchCreatedBy: '',
+    searchCreatedFrom: null,
+    searchCreatedTo: null,
   };
 
   const getFormValues = () => {
-    const formValues = formApi ? formApi.getValues() : {};
+    const values = formApi?.getValues?.() || {};
     return {
-      searchKeyword: formValues.searchKeyword || '',
-      searchStatus: formValues.searchStatus || '',
-      searchProductKey: formValues.searchProductKey || '',
-      searchAvailability: formValues.searchAvailability || '',
+      searchKeyword: values.searchKeyword || '',
+      searchStatus: values.searchStatus || '',
+      searchProductKey: values.searchProductKey || '',
+      searchAvailability: values.searchAvailability || '',
+      searchBatchNo: values.searchBatchNo || '',
+      searchCampaignName: values.searchCampaignName || '',
+      searchChannel: values.searchChannel || '',
+      searchSourcePlatform: values.searchSourcePlatform || '',
+      searchExternalOrderNo: values.searchExternalOrderNo || '',
+      searchCreatedBy: values.searchCreatedBy || '',
+      searchCreatedFrom: values.searchCreatedFrom || null,
+      searchCreatedTo: values.searchCreatedTo || null,
     };
   };
 
+  const buildFilterSummary = () => {
+    const values = getFormValues();
+    const pairs = [
+      [t('关键词'), values.searchKeyword?.trim()],
+      [t('状态'), values.searchStatus],
+      [t('产品资格'), values.searchProductKey?.trim()],
+      [t('可用性'), values.searchAvailability],
+      [t('批次号'), values.searchBatchNo?.trim()],
+      [t('活动名称'), values.searchCampaignName?.trim()],
+      [t('渠道'), values.searchChannel?.trim()],
+      [t('来源平台'), values.searchSourcePlatform?.trim()],
+      [t('外部订单号'), values.searchExternalOrderNo?.trim()],
+      [t('创建人'), values.searchCreatedBy?.trim()],
+      [
+        t('创建区间'),
+        values.searchCreatedFrom || values.searchCreatedTo
+          ? `${values.searchCreatedFrom ? timestamp2string(dateValueToTimestamp(values.searchCreatedFrom)) : '-'} ~ ${
+              values.searchCreatedTo
+                ? timestamp2string(
+                    dateValueToTimestamp(values.searchCreatedTo, true),
+                  )
+                : '-'
+            }`
+          : '',
+      ],
+    ].filter(([, value]) => value);
+    return pairs.map(([label, value]) => `${label}=${value}`).join('；');
+  };
+
   const buildRegistrationCodeQuery = (page = 1, localPageSize = pageSize) => {
-    const {
-      searchKeyword,
-      searchStatus,
-      searchProductKey,
-      searchAvailability,
-    } = getFormValues();
+    const values = getFormValues();
     const params = new URLSearchParams();
     params.set('p', String(page));
     params.set('page_size', String(localPageSize));
-    if (searchKeyword) {
-      params.set('keyword', searchKeyword.trim());
-    }
-    if (searchStatus) {
-      params.set('status', String(searchStatus));
-    }
-    if (searchProductKey) {
-      params.set('product_key', String(searchProductKey).trim());
-    }
-    if (searchAvailability) {
-      params.set('availability', String(searchAvailability));
-    }
+    if (values.searchKeyword?.trim())
+      params.set('keyword', values.searchKeyword.trim());
+    if (values.searchStatus) params.set('status', String(values.searchStatus));
+    if (values.searchProductKey?.trim())
+      params.set('product_key', values.searchProductKey.trim());
+    if (values.searchAvailability)
+      params.set('availability', String(values.searchAvailability));
+    if (values.searchBatchNo?.trim())
+      params.set('batch_no', values.searchBatchNo.trim());
+    if (values.searchCampaignName?.trim())
+      params.set('campaign_name', values.searchCampaignName.trim());
+    if (values.searchChannel?.trim())
+      params.set('channel', values.searchChannel.trim());
+    if (values.searchSourcePlatform?.trim())
+      params.set('source_platform', values.searchSourcePlatform.trim());
+    if (values.searchExternalOrderNo?.trim())
+      params.set('external_order_no', values.searchExternalOrderNo.trim());
+    if (values.searchCreatedBy?.trim())
+      params.set('created_by', values.searchCreatedBy.trim());
+    const createdFrom = dateValueToTimestamp(values.searchCreatedFrom);
+    const createdTo = dateValueToTimestamp(values.searchCreatedTo, true);
+    if (createdFrom > 0) params.set('created_from', String(createdFrom));
+    if (createdTo > 0) params.set('created_to', String(createdTo));
     return params.toString();
   };
+
+  const clearSelection = () => {
+    setSelectedKeys([]);
+    setSelectedRowKeys([]);
+  };
+
+  const getSelectedIds = () =>
+    selectedKeys
+      .map((item) => Number(item?.id || 0))
+      .filter((id) => Number.isInteger(id) && id > 0);
 
   const fetchRegistrationCodes = async (
     page = 1,
@@ -125,14 +205,12 @@ export const useRegistrationCodesData = () => {
       }
     } catch (error) {
       showError(error.message);
+    } finally {
+      stateSetter(false);
     }
-    stateSetter(false);
   };
 
-  const loadRegistrationCodes = async (
-    page = 1,
-    localPageSize = pageSize,
-  ) => {
+  const loadRegistrationCodes = async (page = 1, localPageSize = pageSize) => {
     await fetchRegistrationCodes(page, localPageSize, setLoading);
   };
 
@@ -143,61 +221,25 @@ export const useRegistrationCodesData = () => {
     await fetchRegistrationCodes(page, localPageSize, setSearching);
   };
 
-  const manageRegistrationCode = async (id, action, record) => {
-    setLoading(true);
-    const payload = { id };
-    let res;
-
-    try {
-      switch (action) {
-        case REGISTRATION_CODE_ACTIONS.DELETE:
-          res = await API.delete(`/api/registration-code/${id}`);
-          break;
-        case REGISTRATION_CODE_ACTIONS.ENABLE:
-          payload.status = REGISTRATION_CODE_STATUS.ENABLED;
-          res = await API.put('/api/registration-code/?status_only=true', payload);
-          break;
-        case REGISTRATION_CODE_ACTIONS.DISABLE:
-          payload.status = REGISTRATION_CODE_STATUS.DISABLED;
-          res = await API.put('/api/registration-code/?status_only=true', payload);
-          break;
-        default:
-          throw new Error('Unknown operation type');
-      }
-
-      const { success, message, data } = res.data;
-      if (success) {
-        showSuccess(t('操作成功完成！'));
-        if (action !== REGISTRATION_CODE_ACTIONS.DELETE && data) {
-          record.status = data.status;
-        }
-        await refresh();
-      } else {
-        showError(message);
-      }
-    } catch (error) {
-      showError(error.message);
-    }
-    setLoading(false);
-  };
-
   const refresh = async (page = activePage) => {
     await loadRegistrationCodes(page, pageSize);
   };
 
   const handlePageChange = (page) => {
     setActivePage(page);
-    loadRegistrationCodes(page, pageSize);
+    loadRegistrationCodes(page, pageSize).then();
   };
 
   const handlePageSizeChange = (size) => {
     setPageSize(size);
     setActivePage(1);
-    loadRegistrationCodes(1, size);
+    loadRegistrationCodes(1, size).then();
   };
 
   const rowSelection = {
-    onChange: (_, selectedRows) => {
+    selectedRowKeys,
+    onChange: (rowKeys, selectedRows) => {
+      setSelectedRowKeys(rowKeys);
       setSelectedKeys(selectedRows);
     },
   };
@@ -240,31 +282,51 @@ export const useRegistrationCodesData = () => {
     }
   };
 
-  const batchCopyRegistrationCodes = async () => {
-    if (selectedKeys.length === 0) {
-      showError(t('请至少选择一个注册码！'));
-      return;
+  const recordExportHistory = async ({
+    rows,
+    fileName,
+    targetSummary,
+    notes,
+  }) => {
+    try {
+      await API.post('/api/code-center/history/export', {
+        code_type: 'registration_code',
+        file_name: fileName,
+        batch_no: getRowsBatchNo(rows),
+        total_count: rows.length,
+        success_count: rows.length,
+        failed_count: 0,
+        target_summary: targetSummary,
+        filters: buildFilterSummary(),
+        notes,
+      });
+    } catch (error) {
+      showError(
+        t('导出已完成，但导出历史记录写入失败：{{message}}', {
+          message: error.message,
+        }),
+      );
     }
-
-    const keys = selectedKeys
-      .map((item) => `${item.name || '-'}    ${item.code}`)
-      .join('\n');
-    await copyText(keys);
   };
 
-  const exportCurrentRegistrationCodes = () => {
-    if (!registrationCodes.length) {
+  const exportRegistrationCodeRows = async (rows, filename, targetSummary) => {
+    if (!rows.length) {
       showError(t('当前列表没有可导出的注册码'));
       return;
     }
 
-    const rows = [
+    const csvRows = [
       [
         'id',
         'name',
         'code',
         'status',
         'product_key',
+        'batch_no',
+        'campaign_name',
+        'channel',
+        'source_platform',
+        'external_order_no',
         'used_count',
         'max_uses',
         'availability',
@@ -274,7 +336,7 @@ export const useRegistrationCodesData = () => {
       ].join(','),
     ];
 
-    registrationCodes.forEach((item) => {
+    rows.forEach((item) => {
       const availability = isExpired(item)
         ? REGISTRATION_CODE_FILTER_AVAILABILITY.EXPIRED
         : isExhausted(item)
@@ -288,6 +350,11 @@ export const useRegistrationCodesData = () => {
         item.code || '',
         item.status || '',
         item.product_key || '',
+        item.batch_no || '',
+        item.campaign_name || '',
+        item.channel || '',
+        item.source_platform || '',
+        item.external_order_no || '',
         item.used_count || 0,
         item.max_uses || 0,
         availability,
@@ -295,14 +362,172 @@ export const useRegistrationCodesData = () => {
         item.created_at ? timestamp2string(item.created_at) : '',
         item.notes || '',
       ].map((cell) => `"${String(cell).replaceAll('"', '""')}"`);
-      rows.push(cells.join(','));
+      csvRows.push(cells.join(','));
     });
 
-    downloadTextAsFile(
-      rows.join('\n'),
-      `registration-codes-page-${activePage}.csv`,
+    downloadTextAsFile(csvRows.join('\n'), filename);
+    await recordExportHistory({
+      rows,
+      fileName: filename,
+      targetSummary,
+      notes: t('前端本地导出 CSV'),
+    });
+  };
+
+  const exportCurrentRegistrationCodes = async () => {
+    const fileName = `registration-codes-page-${activePage}.csv`;
+    await exportRegistrationCodeRows(
+      registrationCodes,
+      fileName,
+      t('导出当前页注册码'),
     );
     showSuccess(t('注册码列表导出成功'));
+  };
+
+  const exportSelectedRegistrationCodes = async () => {
+    if (selectedKeys.length === 0) {
+      showError(t('请至少选择一个注册码！'));
+      return;
+    }
+    const fileName = 'registration-codes-selected.csv';
+    await exportRegistrationCodeRows(
+      selectedKeys,
+      fileName,
+      t('导出所选注册码'),
+    );
+    showSuccess(t('所选注册码导出成功'));
+  };
+
+  const batchCopyRegistrationCodes = async () => {
+    if (selectedKeys.length === 0) {
+      showError(t('请至少选择一个注册码！'));
+      return;
+    }
+
+    const keys = selectedKeys
+      .map((item) => `${item.name || '-'}    ${item.code}`)
+      .join('\n');
+    await copyText(keys);
+  };
+
+  const manageRegistrationCode = async (id, action, record) => {
+    setLoading(true);
+    const payload = { id };
+    let res;
+
+    try {
+      switch (action) {
+        case REGISTRATION_CODE_ACTIONS.DELETE:
+          res = await API.delete(`/api/registration-code/${id}`);
+          break;
+        case REGISTRATION_CODE_ACTIONS.ENABLE:
+          payload.status = REGISTRATION_CODE_STATUS.ENABLED;
+          res = await API.put(
+            '/api/registration-code/?status_only=true',
+            payload,
+          );
+          break;
+        case REGISTRATION_CODE_ACTIONS.DISABLE:
+          payload.status = REGISTRATION_CODE_STATUS.DISABLED;
+          res = await API.put(
+            '/api/registration-code/?status_only=true',
+            payload,
+          );
+          break;
+        default:
+          throw new Error('Unknown operation type');
+      }
+
+      const { success, message, data } = res.data;
+      if (success) {
+        showSuccess(t('操作成功完成！'));
+        if (action !== REGISTRATION_CODE_ACTIONS.DELETE && data) {
+          record.status = data.status;
+        }
+        clearSelection();
+        await refresh();
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const batchUpdateRegistrationCodeStatus = async (status) => {
+    const ids = getSelectedIds();
+    if (ids.length === 0) {
+      showError(t('请至少选择一个注册码！'));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await API.post('/api/registration-code/batch/status', {
+        ids,
+        status,
+      });
+      const { success, message, data } = res.data;
+      if (success) {
+        showSuccess(
+          t(
+            status === REGISTRATION_CODE_STATUS.ENABLED
+              ? '已启用 {{count}} 个注册码'
+              : '已禁用 {{count}} 个注册码',
+            { count: Number(data || ids.length) },
+          ),
+        );
+        clearSelection();
+        await refresh();
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const batchDeleteRegistrationCodes = async () => {
+    const ids = getSelectedIds();
+    if (ids.length === 0) {
+      showError(t('请至少选择一个注册码！'));
+      return;
+    }
+
+    Modal.confirm({
+      title: t('确定删除所选注册码？'),
+      content: t('共 {{count}} 个注册码，此操作不可撤销。', {
+        count: ids.length,
+      }),
+      onOk: async () => {
+        setLoading(true);
+        try {
+          const res = await API.post('/api/registration-code/batch/delete', {
+            ids,
+          });
+          const { success, message, data } = res.data;
+          if (success) {
+            showSuccess(
+              t('已删除 {{count}} 个注册码', {
+                count: Number(data || ids.length),
+              }),
+            );
+            clearSelection();
+            await refresh();
+          } else {
+            showError(message);
+          }
+        } catch (error) {
+          showError(error.message);
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const openUsageModal = (record) => {
@@ -318,10 +543,13 @@ export const useRegistrationCodesData = () => {
   const closeEdit = () => {
     setShowEdit(false);
     setTimeout(() => {
-      setEditingRegistrationCode({
-        id: undefined,
-      });
+      setEditingRegistrationCode({ id: undefined });
     }, 500);
+  };
+
+  const handleImportCompleted = async () => {
+    clearSelection();
+    await refresh(1);
   };
 
   useEffect(() => {
@@ -340,6 +568,7 @@ export const useRegistrationCodesData = () => {
     pageSize,
     totalCount,
     selectedKeys,
+    selectedRowKeys,
     editingRegistrationCode,
     showEdit,
     showUsage,
@@ -352,6 +581,7 @@ export const useRegistrationCodesData = () => {
     searchRegistrationCodes,
     manageRegistrationCode,
     refresh,
+    clearSelection,
     copyText,
     setEditingRegistrationCode,
     setShowEdit,
@@ -364,11 +594,17 @@ export const useRegistrationCodesData = () => {
     closeEdit,
     getFormValues,
     batchCopyRegistrationCodes,
+    batchUpdateRegistrationCodeStatus,
+    batchDeleteRegistrationCodes,
     exportCurrentRegistrationCodes,
+    exportSelectedRegistrationCodes,
     openUsageModal,
     closeUsageModal,
     isExpired,
     isExhausted,
+    handleImportCompleted,
+    buildRegistrationCodeQuery,
+    buildFilterSummary,
     t,
   };
 };

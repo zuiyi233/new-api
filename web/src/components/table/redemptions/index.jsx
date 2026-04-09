@@ -17,20 +17,28 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React from 'react';
+import React, { useState } from 'react';
 import CardPro from '../../common/ui/CardPro';
 import RedemptionsTable from './RedemptionsTable';
 import RedemptionsActions from './RedemptionsActions';
 import RedemptionsFilters from './RedemptionsFilters';
 import RedemptionsDescription from './RedemptionsDescription';
 import EditRedemptionModal from './modals/EditRedemptionModal';
+import CodeCsvImportModal from '../common/CodeCsvImportModal';
+import CodeOperationHistoryModal from '../common/CodeOperationHistoryModal';
+import CodeFilterViewsBar from '../common/CodeFilterViewsBar';
+import CodeBatchSummaryModal from '../common/CodeBatchSummaryModal';
 import { useRedemptionsData } from '../../../hooks/redemptions/useRedemptionsData';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
+import { CODE_IMPORT_TEMPLATES } from '../../../constants/code-import-template.constants';
 import { createCardProPagination } from '../../../helpers/utils';
 
 const RedemptionsPage = () => {
   const redemptionsData = useRedemptionsData();
   const isMobile = useIsMobile();
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showBatchSummaryModal, setShowBatchSummaryModal] = useState(false);
 
   const {
     // Edit state
@@ -44,10 +52,17 @@ const RedemptionsPage = () => {
     setEditingRedemption,
     setShowEdit,
     batchCopyRedemptions,
-    batchDeleteRedemptions,
+    batchUpdateRedemptionsStatus,
+    batchDeleteSelectedRedemptions,
+    batchDeleteInvalidRedemptions,
+    exportCurrentRedemptions,
+    exportSelectedRedemptions,
+    handleImportCompleted,
 
     // Filters state
     formInitValues,
+    formApi,
+    getFormValues,
     setFormApi,
     searchRedemptions,
     loading,
@@ -59,6 +74,7 @@ const RedemptionsPage = () => {
 
     // Translation
     t,
+    buildRedemptionQuery,
   } = redemptionsData;
 
   return (
@@ -66,8 +82,41 @@ const RedemptionsPage = () => {
       <EditRedemptionModal
         refresh={refresh}
         editingRedemption={editingRedemption}
-        visiable={showEdit}
+        visible={showEdit}
         handleClose={closeEdit}
+      />
+
+      <CodeCsvImportModal
+        visible={showImportModal}
+        onCancel={() => setShowImportModal(false)}
+        onImported={handleImportCompleted}
+        apiBasePath='/api/redemption'
+        title={t('导入兑换码 CSV')}
+        helperText={t(
+          '支持兑换码批量导入；建议先下载模板填写，再执行预校验。status 可填 enabled / disabled，expired_time 支持时间戳或 YYYY-MM-DD HH:mm:ss。',
+        )}
+        templateFileName={CODE_IMPORT_TEMPLATES.redemption.fileName}
+        templateColumns={CODE_IMPORT_TEMPLATES.redemption.columns}
+        templateRows={CODE_IMPORT_TEMPLATES.redemption.rows}
+        t={t}
+      />
+
+      <CodeOperationHistoryModal
+        visible={showHistoryModal}
+        onCancel={() => setShowHistoryModal(false)}
+        codeType='redemption'
+        title={t('兑换码操作历史')}
+        t={t}
+      />
+
+      <CodeBatchSummaryModal
+        visible={showBatchSummaryModal}
+        onCancel={() => setShowBatchSummaryModal(false)}
+        apiBasePath='/api/redemption'
+        title={t('兑换码批次概览')}
+        buildQuery={buildRedemptionQuery}
+        codeType='redemption'
+        t={t}
       />
 
       <CardPro
@@ -80,26 +129,45 @@ const RedemptionsPage = () => {
           />
         }
         actionsArea={
-          <div className='flex flex-col md:flex-row justify-between items-center gap-2 w-full'>
-            <RedemptionsActions
-              selectedKeys={selectedKeys}
-              setEditingRedemption={setEditingRedemption}
-              setShowEdit={setShowEdit}
-              batchCopyRedemptions={batchCopyRedemptions}
-              batchDeleteRedemptions={batchDeleteRedemptions}
-              t={t}
-            />
-
-            <div className='w-full md:w-full lg:w-auto order-1 md:order-2'>
-              <RedemptionsFilters
-                formInitValues={formInitValues}
-                setFormApi={setFormApi}
-                searchRedemptions={searchRedemptions}
-                loading={loading}
-                searching={searching}
+          <div className='flex flex-col gap-2 w-full'>
+            <div className='flex flex-col md:flex-row justify-between items-center gap-2 w-full'>
+              <RedemptionsActions
+                selectedKeys={selectedKeys}
+                setEditingRedemption={setEditingRedemption}
+                setShowEdit={setShowEdit}
+                batchCopyRedemptions={batchCopyRedemptions}
+                batchUpdateRedemptionsStatus={batchUpdateRedemptionsStatus}
+                batchDeleteSelectedRedemptions={batchDeleteSelectedRedemptions}
+                batchDeleteInvalidRedemptions={batchDeleteInvalidRedemptions}
+                exportCurrentRedemptions={exportCurrentRedemptions}
+                exportSelectedRedemptions={exportSelectedRedemptions}
+                openImportModal={() => setShowImportModal(true)}
+                openHistoryModal={() => setShowHistoryModal(true)}
+                openBatchSummaryModal={() => setShowBatchSummaryModal(true)}
                 t={t}
               />
+
+              <div className='w-full md:w-full lg:w-auto order-1 md:order-2'>
+                <RedemptionsFilters
+                  formInitValues={formInitValues}
+                  setFormApi={setFormApi}
+                  searchRedemptions={searchRedemptions}
+                  loading={loading}
+                  searching={searching}
+                  t={t}
+                />
+              </div>
             </div>
+
+            <CodeFilterViewsBar
+              pageKey='redemptions'
+              formApi={formApi}
+              formInitValues={formInitValues}
+              getFormValues={getFormValues}
+              onSearch={searchRedemptions}
+              dateFields={['searchCreatedFrom', 'searchCreatedTo']}
+              t={t}
+            />
           </div>
         }
         paginationArea={createCardProPagination({

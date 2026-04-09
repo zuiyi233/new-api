@@ -22,6 +22,7 @@ export const ITEMS_PER_PAGE = 10; // this value must keep same as the one define
 export const DEFAULT_ENDPOINT = '/api/ratio_config';
 
 export const TABLE_COMPACT_MODES_KEY = 'table_compact_modes';
+export const CODE_FILTER_VIEWS_KEY = 'code_filter_views';
 
 export const API_ENDPOINTS = [
   '/v1/chat/completions',

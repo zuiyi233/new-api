@@ -19,13 +19,21 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React from 'react';
 import { Button } from '@douyinfe/semi-ui';
+import { REDEMPTION_STATUS } from '../../../constants/redemption.constants';
 
 const RedemptionsActions = ({
   selectedKeys,
   setEditingRedemption,
   setShowEdit,
   batchCopyRedemptions,
-  batchDeleteRedemptions,
+  batchUpdateRedemptionsStatus,
+  batchDeleteSelectedRedemptions,
+  batchDeleteInvalidRedemptions,
+  exportCurrentRedemptions,
+  exportSelectedRedemptions,
+  openImportModal,
+  openHistoryModal,
+  openBatchSummaryModal,
   t,
 }) => {
   // Add new redemption code
@@ -52,14 +60,91 @@ const RedemptionsActions = ({
         className='flex-1 md:flex-initial'
         onClick={batchCopyRedemptions}
         size='small'
+        disabled={selectedKeys.length === 0}
       >
         {t('复制所选兑换码到剪贴板')}
       </Button>
 
       <Button
+        type='secondary'
+        className='flex-1 md:flex-initial'
+        onClick={() => batchUpdateRedemptionsStatus(REDEMPTION_STATUS.UNUSED)}
+        size='small'
+        disabled={selectedKeys.length === 0}
+      >
+        {t('启用所选')}
+      </Button>
+
+      <Button
+        type='warning'
+        className='flex-1 md:flex-initial'
+        onClick={() => batchUpdateRedemptionsStatus(REDEMPTION_STATUS.DISABLED)}
+        size='small'
+        disabled={selectedKeys.length === 0}
+      >
+        {t('禁用所选')}
+      </Button>
+
+      <Button
+        type='danger'
+        className='flex-1 md:flex-initial'
+        onClick={batchDeleteSelectedRedemptions}
+        size='small'
+        disabled={selectedKeys.length === 0}
+      >
+        {t('删除所选')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        className='flex-1 md:flex-initial'
+        onClick={openImportModal}
+        size='small'
+      >
+        {t('导入 CSV')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        className='flex-1 md:flex-initial'
+        onClick={openHistoryModal}
+        size='small'
+      >
+        {t('操作历史')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        className='flex-1 md:flex-initial'
+        onClick={openBatchSummaryModal}
+        size='small'
+      >
+        {t('批次概览')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        className='flex-1 md:flex-initial'
+        onClick={exportSelectedRedemptions}
+        size='small'
+        disabled={selectedKeys.length === 0}
+      >
+        {t('导出所选')}
+      </Button>
+
+      <Button
+        type='tertiary'
+        className='flex-1 md:flex-initial'
+        onClick={exportCurrentRedemptions}
+        size='small'
+      >
+        {t('导出当前页')}
+      </Button>
+
+      <Button
         type='danger'
         className='w-full md:w-auto'
-        onClick={batchDeleteRedemptions}
+        onClick={batchDeleteInvalidRedemptions}
         size='small'
       >
         {t('清除失效兑换码')}

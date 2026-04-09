@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useRef } from 'react';
-import { Form, Button } from '@douyinfe/semi-ui';
+import { Button, Form } from '@douyinfe/semi-ui';
 import { IconSearch } from '@douyinfe/semi-icons';
 import {
   REGISTRATION_CODE_FILTER_AVAILABILITY,
@@ -52,28 +52,29 @@ const RegistrationCodesFilters = ({
         formApiRef.current = api;
       }}
       onSubmit={searchRegistrationCodes}
-      allowEmpty={true}
+      allowEmpty
       autoComplete='off'
       layout='horizontal'
       trigger='change'
       stopValidateWithError={false}
-      className='w-full md:w-auto order-1 md:order-2'
+      className='w-full'
     >
-      <div className='flex flex-col md:flex-row items-center gap-2 w-full md:w-auto'>
-        <div className='relative w-full md:w-64'>
+      <div className='flex flex-wrap items-end gap-2 w-full'>
+        <div className='w-full md:w-64'>
           <Form.Input
             field='searchKeyword'
             prefix={<IconSearch />}
-            placeholder={t('关键字(id、名称或注册码)')}
+            label={t('关键词')}
+            placeholder={t('id / 名称 / 注册码')}
             showClear
             pure
             size='small'
           />
         </div>
-        <div className='w-full md:w-36'>
+        <div className='w-full md:w-32'>
           <Form.Select
             field='searchStatus'
-            placeholder={t('状态')}
+            label={t('状态')}
             optionList={Object.entries(REGISTRATION_CODE_STATUS_MAP).map(
               ([value, config]) => ({
                 label: t(config.text),
@@ -85,20 +86,20 @@ const RegistrationCodesFilters = ({
             size='small'
           />
         </div>
-        <div className='w-full md:w-40'>
+        <div className='w-full md:w-44'>
           <Form.Select
             field='searchProductKey'
-            placeholder={t('产品资格')}
+            label={t('产品资格')}
             optionList={REGISTRATION_CODE_PRODUCT_OPTIONS}
             showClear
             pure
             size='small'
           />
         </div>
-        <div className='w-full md:w-40'>
+        <div className='w-full md:w-32'>
           <Form.Select
             field='searchAvailability'
-            placeholder={t('可用性')}
+            label={t('可用性')}
             optionList={[
               {
                 label: t('可用'),
@@ -122,22 +123,96 @@ const RegistrationCodesFilters = ({
             size='small'
           />
         </div>
-        <div className='flex gap-2 w-full md:w-auto'>
+        <div className='w-full md:w-40'>
+          <Form.Input
+            field='searchBatchNo'
+            label={t('批次号')}
+            placeholder={t('输入批次号')}
+            showClear
+            pure
+            size='small'
+          />
+        </div>
+        <div className='w-full md:w-40'>
+          <Form.Input
+            field='searchCampaignName'
+            label={t('活动名称')}
+            placeholder={t('输入活动名称')}
+            showClear
+            pure
+            size='small'
+          />
+        </div>
+        <div className='w-full md:w-32'>
+          <Form.Input
+            field='searchChannel'
+            label={t('渠道')}
+            placeholder={t('输入渠道')}
+            showClear
+            pure
+            size='small'
+          />
+        </div>
+        <div className='w-full md:w-36'>
+          <Form.Input
+            field='searchSourcePlatform'
+            label={t('来源平台')}
+            placeholder={t('输入来源平台')}
+            showClear
+            pure
+            size='small'
+          />
+        </div>
+        <div className='w-full md:w-40'>
+          <Form.Input
+            field='searchExternalOrderNo'
+            label={t('外部订单号')}
+            placeholder={t('输入外部订单号')}
+            showClear
+            pure
+            size='small'
+          />
+        </div>
+        <div className='w-full md:w-28'>
+          <Form.Input
+            field='searchCreatedBy'
+            label={t('创建人ID')}
+            placeholder='1'
+            showClear
+            pure
+            size='small'
+          />
+        </div>
+        <div className='w-full md:w-44'>
+          <Form.DatePicker
+            field='searchCreatedFrom'
+            label={t('创建开始')}
+            type='dateTime'
+            showClear
+            pure
+            size='small'
+          />
+        </div>
+        <div className='w-full md:w-44'>
+          <Form.DatePicker
+            field='searchCreatedTo'
+            label={t('创建结束')}
+            type='dateTime'
+            showClear
+            pure
+            size='small'
+          />
+        </div>
+        <div className='flex gap-2'>
           <Button
             type='tertiary'
             htmlType='submit'
             loading={loading || searching}
-            className='flex-1 md:flex-initial md:w-auto'
             size='small'
           >
             {t('查询')}
           </Button>
-          <Button
-            type='tertiary'
-            onClick={handleReset}
-            className='flex-1 md:flex-initial md:w-auto'
-            size='small'
-          >
+          <Button type='tertiary' onClick={handleReset} size='small'>
             {t('重置')}
           </Button>
         </div>

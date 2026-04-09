@@ -34,8 +34,10 @@ const routerMap = {
   home: '/',
   channel: '/console/channel',
   token: '/console/token',
+  code_center: '/console/code-center',
   redemption: '/console/redemption',
   registration_code: '/console/registration-code',
+  subscription_code: '/console/subscription-code',
   topup: '/console/topup',
   user: '/console/user',
   subscription: '/console/subscription',
@@ -155,6 +157,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {
+        text: t('码中心'),
+        itemKey: 'code_center',
+        to: '/code-center',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
         text: t('订阅管理'),
         itemKey: 'subscription',
         to: '/subscription',
@@ -182,6 +190,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('注册码管理'),
         itemKey: 'registration_code',
         to: '/registration-code',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('订阅码管理'),
+        itemKey: 'subscription_code',
+        to: '/subscription-code',
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {

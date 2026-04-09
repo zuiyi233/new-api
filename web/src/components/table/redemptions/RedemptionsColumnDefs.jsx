@@ -97,6 +97,21 @@ export const getRedemptionsColumns = ({
       dataIndex: 'name',
     },
     {
+      title: t('批次号'),
+      dataIndex: 'batch_no',
+      render: (text) => <div>{text || '-'}</div>,
+    },
+    {
+      title: t('渠道'),
+      dataIndex: 'channel',
+      render: (text) => <div>{text || '-'}</div>,
+    },
+    {
+      title: t('来源平台'),
+      dataIndex: 'source_platform',
+      render: (text) => <div>{text || '-'}</div>,
+    },
+    {
       title: t('状态'),
       dataIndex: 'status',
       key: 'status',

@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,16 +20,30 @@ type registrationCodeValidatePayload struct {
 
 func buildRegistrationCodeQuery(c *gin.Context, keyword string) (model.RegistrationCodeQuery, error) {
 	filters := model.RegistrationCodeQuery{
-		Keyword:      strings.TrimSpace(keyword),
-		ProductKey:   strings.TrimSpace(c.Query("product_key")),
-		Availability: strings.TrimSpace(c.Query("availability")),
+		Keyword:         strings.TrimSpace(keyword),
+		ProductKey:      strings.TrimSpace(c.Query("product_key")),
+		Availability:    strings.TrimSpace(c.Query("availability")),
+		BatchNo:         strings.TrimSpace(c.Query("batch_no")),
+		CampaignName:    strings.TrimSpace(c.Query("campaign_name")),
+		Channel:         strings.TrimSpace(c.Query("channel")),
+		SourcePlatform:  strings.TrimSpace(c.Query("source_platform")),
+		ExternalOrderNo: strings.TrimSpace(c.Query("external_order_no")),
 	}
+	var err error
 	if rawStatus := strings.TrimSpace(c.Query("status")); rawStatus != "" {
-		status, err := strconv.Atoi(rawStatus)
+		filters.Status, err = strconv.Atoi(rawStatus)
 		if err != nil {
 			return filters, errors.New("注册码状态无效")
 		}
-		filters.Status = status
+	}
+	if filters.CreatedBy, err = parsePositiveIntQuery(c.Query("created_by"), "创建人"); err != nil {
+		return filters, err
+	}
+	if filters.CreatedFrom, err = parseTimestampQuery(c.Query("created_from"), "创建开始时间"); err != nil {
+		return filters, err
+	}
+	if filters.CreatedTo, err = parseTimestampQuery(c.Query("created_to"), "创建结束时间"); err != nil {
+		return filters, err
 	}
 	return filters, nil
 }
@@ -67,6 +81,25 @@ func SearchRegistrationCodes(c *gin.Context) {
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(codes)
 	common.ApiSuccess(c, pageInfo)
+}
+
+func GetRegistrationCodeBatchSummaries(c *gin.Context) {
+	filters, err := buildRegistrationCodeQuery(c, c.Query("keyword"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	limit, err := parsePositiveIntQuery(c.Query("limit"), "limit")
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	summaries, err := model.GetRegistrationCodeBatchSummaries(filters, limit)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, summaries)
 }
 
 func ValidateRegistrationCode(c *gin.Context) {
@@ -132,57 +165,37 @@ func AddRegistrationCode(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-
-	if err := validateRegistrationCodePayload(payload, false); err != nil {
+	if payload.Count <= 0 {
+		payload.Count = 1
+	}
+	if err := model.ValidateRegistrationCodeAdminPayload(payload); err != nil {
 		common.ApiError(c, err)
 		return
 	}
-
-	count := payload.Count
-	if count <= 0 {
-		count = 1
-	}
-	if count > 100 {
-		common.ApiErrorMsg(c, "一次最多创建 100 个注册码")
-		return
-	}
-	if count > 1 && strings.TrimSpace(payload.Code) != "" {
+	if payload.Count > 1 && strings.TrimSpace(payload.Code) != "" {
 		common.ApiErrorMsg(c, "批量创建时不能指定固定注册码")
 		return
 	}
 
-	now := common.GetTimestamp()
-	createdCodes := make([]string, 0, count)
-	for i := 0; i < count; i++ {
-		codeValue := strings.TrimSpace(payload.Code)
-		if codeValue == "" || count > 1 {
-			codeValue = strings.ToUpper(common.GetUUID())
-		}
-		maxUses := payload.MaxUses
-		if maxUses == 0 {
-			maxUses = 1
-		}
-		code := &model.RegistrationCode{
-			Code:       codeValue,
-			Name:       strings.TrimSpace(payload.Name),
-			Status:     common.RegistrationCodeStatusEnabled,
-			ProductKey: strings.TrimSpace(payload.ProductKey),
-			ExpiresAt:  payload.ExpiresAt,
-			MaxUses:    maxUses,
-			CreatedBy:  c.GetInt("id"),
-			Notes:      strings.TrimSpace(payload.Notes),
-			CreatedAt:  now,
-			UpdatedAt:  now,
-		}
-		if code.ProductKey == "" {
-			code.ProductKey = common.ProductKeyNovel
-		}
+	operatorId := c.GetInt("id")
+	entities, createdCodes := model.BuildRegistrationCodes(operatorId, *payload)
+	for _, code := range entities {
 		if err := code.Insert(); err != nil {
 			common.ApiError(c, err)
 			return
 		}
-		createdCodes = append(createdCodes, code.Code)
 	}
+
+	recordCodeOperationLog(c, &model.CodeOperationLog{
+		CodeType:      model.CodeTypeRegistrationCode,
+		OperationType: model.CodeOperationCreate,
+		BatchNo:       payload.BatchNo,
+		TargetSummary: "创建注册码",
+		TotalCount:    len(createdCodes),
+		SuccessCount:  len(createdCodes),
+		Notes:         payload.Name,
+		ErrorDetails:  marshalLogValue(createdCodes),
+	})
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -216,22 +229,25 @@ func UpdateRegistrationCode(c *gin.Context) {
 		}
 		code.Status = payload.Status
 	} else {
-		if err := validateRegistrationCodePayload(payload, true); err != nil {
-			common.ApiError(c, err)
-			return
-		}
 		if payload.Status == 0 {
 			payload.Status = code.Status
 		}
-		code.Name = strings.TrimSpace(payload.Name)
-		code.Status = payload.Status
-		code.ProductKey = strings.TrimSpace(payload.ProductKey)
-		if code.ProductKey == "" {
-			code.ProductKey = common.ProductKeyNovel
+		payload.Count = 1
+		if err := model.ValidateRegistrationCodeAdminPayload(payload); err != nil {
+			common.ApiError(c, err)
+			return
 		}
+		code.Name = payload.Name
+		code.Status = payload.Status
+		code.ProductKey = payload.ProductKey
 		code.ExpiresAt = payload.ExpiresAt
 		code.MaxUses = payload.MaxUses
-		code.Notes = strings.TrimSpace(payload.Notes)
+		code.BatchNo = payload.BatchNo
+		code.CampaignName = payload.CampaignName
+		code.Channel = payload.Channel
+		code.SourcePlatform = payload.SourcePlatform
+		code.ExternalOrderNo = payload.ExternalOrderNo
+		code.Notes = payload.Notes
 		if err := code.ValidateUpdateConstraints(); err != nil {
 			common.ApiError(c, err)
 			return
@@ -242,6 +258,15 @@ func UpdateRegistrationCode(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	recordCodeOperationLog(c, &model.CodeOperationLog{
+		CodeType:      model.CodeTypeRegistrationCode,
+		OperationType: model.CodeOperationUpdate,
+		BatchNo:       code.BatchNo,
+		TargetSummary: "id=" + strconv.Itoa(code.Id),
+		TotalCount:    1,
+		SuccessCount:  1,
+		Notes:         code.Name,
+	})
 	common.ApiSuccess(c, code)
 }
 
@@ -251,11 +276,75 @@ func DeleteRegistrationCode(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	code, err := model.GetRegistrationCodeById(id)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	if err := model.DeleteRegistrationCodeById(id); err != nil {
 		common.ApiError(c, err)
 		return
 	}
+	recordCodeOperationLog(c, &model.CodeOperationLog{
+		CodeType:      model.CodeTypeRegistrationCode,
+		OperationType: model.CodeOperationDelete,
+		BatchNo:       code.BatchNo,
+		TargetSummary: "删除注册码",
+		TotalCount:    1,
+		SuccessCount:  1,
+		Notes:         code.Name,
+		ErrorDetails:  marshalLogValue([]string{code.Code}),
+	})
 	common.ApiSuccess(c, nil)
+}
+
+func DeleteRegistrationCodeBatch(c *gin.Context) {
+	ids, err := parseCodeBatchPayload(c)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	count, err := model.BatchDeleteRegistrationCodes(ids)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	recordCodeOperationLog(c, &model.CodeOperationLog{
+		CodeType:      model.CodeTypeRegistrationCode,
+		OperationType: model.CodeOperationBatchDelete,
+		TargetSummary: summarizeIDs(ids),
+		TotalCount:    len(ids),
+		SuccessCount:  int(count),
+		FailedCount:   len(ids) - int(count),
+	})
+	common.ApiSuccess(c, count)
+}
+
+func UpdateRegistrationCodeBatchStatus(c *gin.Context) {
+	ids, status, err := parseCodeBatchStatusPayload(
+		c,
+		common.RegistrationCodeStatusEnabled,
+		common.RegistrationCodeStatusDisabled,
+	)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	count, err := model.BatchUpdateRegistrationCodeStatus(ids, status)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	recordCodeOperationLog(c, &model.CodeOperationLog{
+		CodeType:      model.CodeTypeRegistrationCode,
+		OperationType: model.CodeOperationBatchStatus,
+		TargetSummary: summarizeIDs(ids),
+		TotalCount:    len(ids),
+		SuccessCount:  int(count),
+		FailedCount:   len(ids) - int(count),
+		Notes:         "status=" + strconv.Itoa(status),
+	})
+	common.ApiSuccess(c, count)
 }
 
 func GetRegistrationCodeUsages(c *gin.Context) {
@@ -279,32 +368,51 @@ func GetRegistrationCodeUsages(c *gin.Context) {
 	common.ApiSuccess(c, pageInfo)
 }
 
-func validateRegistrationCodePayload(payload *model.RegistrationCode, isEdit bool) error {
-	payload.Name = strings.TrimSpace(payload.Name)
-	payload.ProductKey = strings.TrimSpace(payload.ProductKey)
-	if payload.ProductKey == "" {
-		payload.ProductKey = common.ProductKeyNovel
+func PreviewRegistrationCodeImport(c *gin.Context) {
+	payload, err := parseCodeImportPayload(c)
+	if err != nil {
+		common.ApiError(c, err)
+		return
 	}
-	if !isEdit && payload.Status == 0 {
-		payload.Status = common.RegistrationCodeStatusEnabled
+	result, err := service.PreviewRegistrationCodeCSV(payload.FileName, payload.CsvContent)
+	if err != nil {
+		common.ApiError(c, err)
+		return
 	}
-	if utf8.RuneCountInString(payload.Name) == 0 || utf8.RuneCountInString(payload.Name) > 64 {
-		return errors.New("注册码名称长度需在 1 到 64 个字符之间")
+	recordCodeOperationLog(c, &model.CodeOperationLog{
+		CodeType:      model.CodeTypeRegistrationCode,
+		OperationType: model.CodeOperationImportPreview,
+		FileName:      result.FileName,
+		BatchNo:       result.BatchNo,
+		TotalCount:    result.TotalRows,
+		SuccessCount:  result.ValidRows,
+		FailedCount:   result.InvalidRows,
+		ErrorDetails:  marshalLogValue(result.Errors),
+	})
+	common.ApiSuccess(c, result)
+}
+
+func ImportRegistrationCode(c *gin.Context) {
+	payload, err := parseCodeImportPayload(c)
+	if err != nil {
+		common.ApiError(c, err)
+		return
 	}
-	if code := strings.TrimSpace(payload.Code); code != "" && utf8.RuneCountInString(code) > 64 {
-		return errors.New("注册码长度不能超过 64 个字符")
+	result, err := service.ImportRegistrationCodeCSV(c.GetInt("id"), payload.FileName, payload.CsvContent)
+	if err != nil {
+		common.ApiError(c, err)
+		return
 	}
-	if payload.ExpiresAt != 0 && payload.ExpiresAt < common.GetTimestamp() {
-		return errors.New("过期时间不能早于当前时间")
-	}
-	if payload.MaxUses < 0 {
-		return errors.New("最大使用次数不能小于 0")
-	}
-	if isEdit && payload.Status != 0 && payload.Status != common.RegistrationCodeStatusEnabled && payload.Status != common.RegistrationCodeStatusDisabled {
-		return errors.New("注册码状态无效")
-	}
-	if payload.MaxUses > 0 && payload.UsedCount > payload.MaxUses {
-		return errors.New("最大使用次数不能小于已使用次数")
-	}
-	return nil
+	recordCodeOperationLog(c, &model.CodeOperationLog{
+		CodeType:      model.CodeTypeRegistrationCode,
+		OperationType: model.CodeOperationImport,
+		FileName:      result.FileName,
+		BatchNo:       result.BatchNo,
+		TotalCount:    result.TotalRows,
+		SuccessCount:  result.SuccessCount,
+		FailedCount:   result.FailedCount,
+		ErrorDetails:  marshalLogValue(result.Errors),
+		Notes:         marshalLogValue(result.CreatedCodes),
+	})
+	common.ApiSuccess(c, result)
 }

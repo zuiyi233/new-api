@@ -206,6 +206,12 @@ const (
 )
 
 const (
+	SubscriptionCodeStatusEnabled  = 1 // don't use 0, 0 is the default value!
+	SubscriptionCodeStatusDisabled = 2 // also don't use 0
+	SubscriptionCodeStatusUsed     = 3 // also don't use 0
+)
+
+const (
 	RegistrationCodeStatusEnabled  = 1 // don't use 0, 0 is the default value!
 	RegistrationCodeStatusDisabled = 2 // also don't use 0
 )

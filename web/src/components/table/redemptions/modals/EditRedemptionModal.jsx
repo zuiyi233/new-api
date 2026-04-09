@@ -17,375 +17,414 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   API,
   downloadTextAsFile,
+  renderQuota,
+  renderQuotaWithPrompt,
   showError,
   showSuccess,
-  renderQuota,
-  getCurrencyConfig,
 } from '../../../../helpers';
-import {
-  quotaToDisplayAmount,
-  displayAmountToQuota,
-} from '../../../../helpers/quota';
 import { useIsMobile } from '../../../../hooks/common/useIsMobile';
 import {
+  Avatar,
   Button,
+  Card,
+  Col,
+  Form,
   Modal,
+  Row,
   SideSheet,
   Space,
   Spin,
-  Typography,
-  Card,
   Tag,
-  Form,
-  Avatar,
-  Row,
-  Col,
-  InputNumber,
+  Typography,
 } from '@douyinfe/semi-ui';
 import {
-  IconCreditCard,
-  IconSave,
   IconClose,
+  IconCreditCard,
   IconGift,
+  IconSave,
 } from '@douyinfe/semi-icons';
 
 const { Text, Title } = Typography;
 
-const EditRedemptionModal = (props) => {
+const getInitValues = () => ({
+  name: '',
+  key: '',
+  quota: 100000,
+  status: 1,
+  count: 1,
+  batch_no: '',
+  campaign_name: '',
+  channel: '',
+  source_platform: '',
+  external_order_no: '',
+  notes: '',
+  expired_time: null,
+});
+
+const normalizeValues = (values) => {
+  const localValues = { ...values };
+  localValues.name = localValues.name?.trim() || '';
+  localValues.key = localValues.key?.trim() || '';
+  localValues.quota = Number(localValues.quota) || 0;
+  localValues.status = Number(localValues.status) || 1;
+  localValues.count = Number(localValues.count) || 1;
+  localValues.batch_no = localValues.batch_no?.trim() || '';
+  localValues.campaign_name = localValues.campaign_name?.trim() || '';
+  localValues.channel = localValues.channel?.trim() || '';
+  localValues.source_platform = localValues.source_platform?.trim() || '';
+  localValues.external_order_no = localValues.external_order_no?.trim() || '';
+  localValues.notes = localValues.notes?.trim() || '';
+  localValues.expired_time = localValues.expired_time
+    ? Math.floor(localValues.expired_time.getTime() / 1000)
+    : 0;
+  return localValues;
+};
+
+const EditRedemptionModal = ({
+  refresh,
+  editingRedemption,
+  visible,
+  handleClose,
+}) => {
   const { t } = useTranslation();
-  const isEdit = props.editingRedemption.id !== undefined;
-  const [loading, setLoading] = useState(isEdit);
   const isMobile = useIsMobile();
   const formApiRef = useRef(null);
-  const [showQuotaInput, setShowQuotaInput] = useState(false);
+  const isEdit = editingRedemption?.id !== undefined;
+  const [loading, setLoading] = useState(false);
 
-  const getInitValues = () => ({
-    name: '',
-    quota: 100000,
-    amount: Number(quotaToDisplayAmount(100000).toFixed(6)),
-    count: 1,
-    expired_time: null,
-  });
+  const title = useMemo(
+    () => (isEdit ? t('更新兑换码信息') : t('创建新的兑换码')),
+    [isEdit, t],
+  );
 
-  const handleCancel = () => {
-    props.handleClose();
+  const setFormValues = (data = {}) => {
+    formApiRef.current?.setValues({
+      ...getInitValues(),
+      ...data,
+      expired_time: data?.expired_time ? new Date(data.expired_time * 1000) : null,
+      count: data?.count ?? 1,
+      quota: data?.quota ?? 100000,
+      status: data?.status ?? 1,
+      batch_no: data?.batch_no || '',
+      campaign_name: data?.campaign_name || '',
+      channel: data?.channel || '',
+      source_platform: data?.source_platform || '',
+      external_order_no: data?.external_order_no || '',
+      notes: data?.notes || '',
+    });
   };
 
   const loadRedemption = async () => {
-    setLoading(true);
-    let res = await API.get(`/api/redemption/${props.editingRedemption.id}`);
-    const { success, message, data } = res.data;
-    if (success) {
-      if (data.expired_time === 0) {
-        data.expired_time = null;
-      } else {
-        data.expired_time = new Date(data.expired_time * 1000);
-      }
-      data.amount = Number(quotaToDisplayAmount(data.quota || 0).toFixed(6));
-      formApiRef.current?.setValues({ ...getInitValues(), ...data });
-    } else {
-      showError(message);
+    if (!editingRedemption?.id) {
+      setFormValues();
+      return;
     }
-    setLoading(false);
+    setLoading(true);
+    try {
+      const res = await API.get(`/api/redemption/${editingRedemption.id}`);
+      const { success, message, data } = res.data;
+      if (success) {
+        setFormValues(data);
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (formApiRef.current) {
-      if (isEdit) {
-        loadRedemption();
-      } else {
-        formApiRef.current.setValues(getInitValues());
-      }
-    }
-  }, [props.editingRedemption.id]);
-
-  const submit = async (values) => {
-    let name = values.name;
-    if (!isEdit && (!name || name === '')) {
-      name = renderQuota(values.quota);
-    }
-    setLoading(true);
-    let localInputs = { ...values };
-    localInputs.count = parseInt(localInputs.count) || 0;
-    localInputs.quota = displayAmountToQuota(localInputs.amount);
-    if (localInputs.quota <= 0) {
-      showError(t('请输入金额'));
-      setLoading(false);
+    if (!visible || !formApiRef.current) return;
+    if (isEdit) {
+      loadRedemption();
       return;
     }
-    localInputs.name = name;
-    if (!localInputs.expired_time) {
-      localInputs.expired_time = 0;
-    } else {
-      localInputs.expired_time = Math.floor(
-        localInputs.expired_time.getTime() / 1000,
-      );
+    setFormValues(editingRedemption || {});
+  }, [visible, isEdit, editingRedemption?.id]);
+
+  const submit = async (values) => {
+    let payload = normalizeValues(values);
+    if (!isEdit && !payload.name) {
+      payload.name = renderQuota(payload.quota);
     }
-    let res;
-    if (isEdit) {
-      res = await API.put(`/api/redemption/`, {
-        ...localInputs,
-        id: parseInt(props.editingRedemption.id),
-      });
-    } else {
-      res = await API.post(`/api/redemption/`, {
-        ...localInputs,
-      });
+    if (!payload.name) {
+      showError(t('请输入名称'));
+      return;
     }
-    const { success, message, data } = res.data;
-    if (success) {
-      if (isEdit) {
-        showSuccess(t('兑换码更新成功！'));
-        props.refresh();
-        props.handleClose();
-      } else {
-        showSuccess(t('兑换码创建成功！'));
-        props.refresh();
-        formApiRef.current?.setValues(getInitValues());
-        props.handleClose();
+    if (payload.quota <= 0) {
+      showError(t('额度必须大于 0'));
+      return;
+    }
+    if (!isEdit && payload.count <= 0) {
+      showError(t('生成数量必须大于 0'));
+      return;
+    }
+    if (!isEdit && payload.count > 1 && payload.key) {
+      showError(t('批量创建时不能指定固定兑换码'));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = isEdit
+        ? await API.put('/api/redemption/', {
+            ...payload,
+            id: Number(editingRedemption.id),
+          })
+        : await API.post('/api/redemption/', payload);
+
+      const { success, message, data } = res.data;
+      if (!success) {
+        showError(message);
+        return;
       }
-    } else {
-      showError(message);
-    }
-    if (!isEdit && data) {
-      let text = '';
-      for (let i = 0; i < data.length; i++) {
-        text += data[i] + '\n';
+
+      showSuccess(isEdit ? t('兑换码更新成功！') : t('兑换码创建成功！'));
+      await refresh();
+      handleClose();
+
+      if (!isEdit && Array.isArray(data) && data.length > 0) {
+        Modal.confirm({
+          title: t('兑换码创建成功'),
+          content: (
+            <div>
+              <p>{t('兑换码创建成功，是否下载兑换码？')}</p>
+              <p>{t('兑换码将以文本文件的形式下载，文件名为兑换码的名称。')}</p>
+            </div>
+          ),
+          onOk: () => {
+            downloadTextAsFile(data.join('\n'), `${payload.name}.txt`);
+          },
+        });
       }
-      Modal.confirm({
-        title: t('兑换码创建成功'),
-        content: (
-          <div>
-            <p>{t('兑换码创建成功，是否下载兑换码？')}</p>
-            <p>{t('兑换码将以文本文件的形式下载，文件名为兑换码的名称。')}</p>
-          </div>
-        ),
-        onOk: () => {
-          downloadTextAsFile(text, `${localInputs.name}.txt`);
-        },
-      });
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <>
-      <SideSheet
-        placement={isEdit ? 'right' : 'left'}
-        title={
+    <SideSheet
+      placement={isEdit ? 'right' : 'left'}
+      title={
+        <Space>
+          {isEdit ? (
+            <Tag color='blue' shape='circle'>
+              {t('更新')}
+            </Tag>
+          ) : (
+            <Tag color='green' shape='circle'>
+              {t('新建')}
+            </Tag>
+          )}
+          <Title heading={4} className='m-0'>
+            {title}
+          </Title>
+        </Space>
+      }
+      bodyStyle={{ padding: 0 }}
+      visible={visible}
+      width={isMobile ? '100%' : 720}
+      footer={
+        <div className='flex justify-end bg-white'>
           <Space>
-            {isEdit ? (
-              <Tag color='blue' shape='circle'>
-                {t('更新')}
-              </Tag>
-            ) : (
-              <Tag color='green' shape='circle'>
-                {t('新建')}
-              </Tag>
-            )}
-            <Title heading={4} className='m-0'>
-              {isEdit ? t('更新兑换码信息') : t('创建新的兑换码')}
-            </Title>
+            <Button
+              theme='solid'
+              onClick={() => formApiRef.current?.submitForm()}
+              icon={<IconSave />}
+              loading={loading}
+            >
+              {t('提交')}
+            </Button>
+            <Button
+              theme='light'
+              type='primary'
+              onClick={handleClose}
+              icon={<IconClose />}
+            >
+              {t('取消')}
+            </Button>
           </Space>
-        }
-        bodyStyle={{ padding: '0' }}
-        visible={props.visiable}
-        width={isMobile ? '100%' : 600}
-        footer={
-          <div className='flex justify-end bg-white'>
-            <Space>
-              <Button
-                theme='solid'
-                onClick={() => formApiRef.current?.submitForm()}
-                icon={<IconSave />}
-                loading={loading}
-              >
-                {t('提交')}
-              </Button>
-              <Button
-                theme='light'
-                type='primary'
-                onClick={handleCancel}
-                icon={<IconClose />}
-              >
-                {t('取消')}
-              </Button>
-            </Space>
-          </div>
-        }
-        closeIcon={null}
-        onCancel={() => handleCancel()}
-      >
-        <Spin spinning={loading}>
-          <Form
-            initValues={getInitValues()}
-            getFormApi={(api) => (formApiRef.current = api)}
-            onSubmit={submit}
-          >
-            {({ values }) => (
-              <div className='p-2'>
-                <Card className='!rounded-2xl shadow-sm border-0 mb-6'>
-                  {/* Header: Basic Info */}
-                  <div className='flex items-center mb-2'>
-                    <Avatar
-                      size='small'
-                      color='blue'
-                      className='mr-2 shadow-md'
-                    >
-                      <IconGift size={16} />
-                    </Avatar>
-                    <div>
-                      <Text className='text-lg font-medium'>
-                        {t('基本信息')}
-                      </Text>
-                      <div className='text-xs text-gray-600'>
-                        {t('设置兑换码的基本信息')}
-                      </div>
+        </div>
+      }
+      closeIcon={null}
+      onCancel={handleClose}
+    >
+      <Spin spinning={loading}>
+        <Form
+          initValues={getInitValues()}
+          getFormApi={(api) => {
+            formApiRef.current = api;
+          }}
+          onSubmit={submit}
+        >
+          {({ values }) => (
+            <div className='p-2'>
+              <Card className='!rounded-2xl shadow-sm border-0 mb-6'>
+                <div className='flex items-center mb-2'>
+                  <Avatar size='small' color='blue' className='mr-2 shadow-md'>
+                    <IconGift size={16} />
+                  </Avatar>
+                  <div>
+                    <Text className='text-lg font-medium'>{t('基本信息')}</Text>
+                    <div className='text-xs text-gray-600'>
+                      {t('设置兑换码名称、额度与生效范围')}
                     </div>
                   </div>
+                </div>
 
-                  <Row gutter={12}>
+                <Row gutter={12}>
+                  <Col span={24}>
+                    <Form.Input
+                      field='name'
+                      label={t('名称')}
+                      placeholder={t('请输入名称')}
+                      style={{ width: '100%' }}
+                      showClear
+                    />
+                  </Col>
+                  {!isEdit && (
                     <Col span={24}>
                       <Form.Input
-                        field='name'
-                        label={t('名称')}
-                        placeholder={t('请输入名称')}
-                        style={{ width: '100%' }}
-                        rules={
-                          !isEdit
-                            ? []
-                            : [{ required: true, message: t('请输入名称') }]
-                        }
-                        showClear
-                      />
-                    </Col>
-                    <Col span={24}>
-                      <Form.DatePicker
-                        field='expired_time'
-                        label={t('过期时间')}
-                        type='dateTime'
-                        placeholder={t('选择过期时间（可选，留空为永久）')}
+                        field='key'
+                        label={t('自定义兑换码')}
+                        placeholder={t('可选，留空则自动生成')}
                         style={{ width: '100%' }}
                         showClear
                       />
                     </Col>
-                  </Row>
-                </Card>
+                  )}
+                  <Col span={12}>
+                    <Form.DatePicker
+                      field='expired_time'
+                      label={t('过期时间')}
+                      type='dateTime'
+                      placeholder={t('选择过期时间（可选，留空为永久）')}
+                      style={{ width: '100%' }}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Select
+                      field='status'
+                      label={t('状态')}
+                      optionList={[
+                        { label: t('启用'), value: 1 },
+                        { label: t('禁用'), value: 2 },
+                      ]}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                </Row>
+              </Card>
 
-                <Card className='!rounded-2xl shadow-sm border-0'>
-                  {/* Header: Quota Settings */}
-                  <div className='flex items-center mb-2'>
-                    <Avatar
-                      size='small'
-                      color='green'
-                      className='mr-2 shadow-md'
-                    >
-                      <IconCreditCard size={16} />
-                    </Avatar>
-                    <div>
-                      <Text className='text-lg font-medium'>
-                        {t('额度设置')}
-                      </Text>
-                      <div className='text-xs text-gray-600'>
-                        {t('设置兑换码的额度和数量')}
-                      </div>
+              <Card className='!rounded-2xl shadow-sm border-0 mb-6'>
+                <div className='flex items-center mb-2'>
+                  <Avatar size='small' color='green' className='mr-2 shadow-md'>
+                    <IconCreditCard size={16} />
+                  </Avatar>
+                  <div>
+                    <Text className='text-lg font-medium'>{t('额度与批次')}</Text>
+                    <div className='text-xs text-gray-600'>
+                      {t('配置额度、批次、渠道和来源平台')}
                     </div>
                   </div>
+                </div>
 
-                  <Row gutter={12}>
-                    <Col span={24}>
+                <Row gutter={12}>
+                  <Col span={12}>
+                    <Form.AutoComplete
+                      field='quota'
+                      label={t('额度')}
+                      placeholder={t('请输入额度')}
+                      style={{ width: '100%' }}
+                      type='number'
+                      extraText={renderQuotaWithPrompt(Number(values.quota) || 0)}
+                      data={[
+                        { value: 500000, label: '1$' },
+                        { value: 5000000, label: '10$' },
+                        { value: 25000000, label: '50$' },
+                        { value: 50000000, label: '100$' },
+                        { value: 250000000, label: '500$' },
+                        { value: 500000000, label: '1000$' },
+                      ]}
+                      showClear
+                    />
+                  </Col>
+                  {!isEdit && (
+                    <Col span={12}>
                       <Form.InputNumber
-                        field='amount'
-                        label={t('金额')}
-                        prefix={getCurrencyConfig().symbol}
-                        placeholder={t('输入金额')}
-                        precision={6}
-                        min={0}
-                        step={0.000001}
+                        field='count'
+                        label={t('生成数量')}
+                        min={1}
                         style={{ width: '100%' }}
-                        onChange={(val) => {
-                          const amount = val === '' || val == null ? 0 : val;
-                          formApiRef.current?.setValue('amount', amount);
-                          formApiRef.current?.setValue(
-                            'quota',
-                            displayAmountToQuota(amount),
-                          );
-                        }}
-                        showClear
                       />
-                      <div
-                        className='text-xs cursor-pointer mt-1'
-                        style={{ color: 'var(--semi-color-text-2)' }}
-                        onClick={() => setShowQuotaInput((v) => !v)}
-                      >
-                        {showQuotaInput
-                          ? `▾ ${t('收起原生额度输入')}`
-                          : `▸ ${t('使用原生额度输入')}`}
-                      </div>
-                      <div style={{ display: showQuotaInput ? 'block' : 'none' }} className='mt-2'>
-                        <Form.InputNumber
-                          field='quota'
-                          label={t('额度')}
-                          placeholder={t('输入额度')}
-                          rules={[
-                            { required: true, message: t('请输入额度') },
-                            {
-                              validator: (rule, v) => {
-                                const num = parseInt(v, 10);
-                                return num > 0
-                                  ? Promise.resolve()
-                                  : Promise.reject(t('额度必须大于0'));
-                              },
-                            },
-                          ]}
-                          onChange={(val) => {
-                            const quota = val === '' || val == null ? 0 : val;
-                            formApiRef.current?.setValue('quota', quota);
-                            formApiRef.current?.setValue(
-                              'amount',
-                              Number(quotaToDisplayAmount(quota).toFixed(6)),
-                            );
-                          }}
-                          style={{ width: '100%' }}
-                          showClear
-                        />
-                      </div>
                     </Col>
-                    {!isEdit && (
-                      <Col span={12}>
-                        <Form.InputNumber
-                          field='count'
-                          label={t('生成数量')}
-                          min={1}
-                          rules={[
-                            { required: true, message: t('请输入生成数量') },
-                            {
-                              validator: (rule, v) => {
-                                const num = parseInt(v, 10);
-                                return num > 0
-                                  ? Promise.resolve()
-                                  : Promise.reject(t('生成数量必须大于0'));
-                              },
-                            },
-                          ]}
-                          style={{ width: '100%' }}
-                          showClear
-                        />
-                      </Col>
-                    )}
-                  </Row>
-                </Card>
-              </div>
-            )}
-          </Form>
-        </Spin>
-      </SideSheet>
-    </>
+                  )}
+                  <Col span={12}>
+                    <Form.Input
+                      field='batch_no'
+                      label={t('批次号')}
+                      placeholder={t('例如 TB-20260409')}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='campaign_name'
+                      label={t('活动名称')}
+                      placeholder={t('请输入活动名称')}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='channel'
+                      label={t('渠道')}
+                      placeholder={t('淘宝 / 闲鱼 / 微信')}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='source_platform'
+                      label={t('来源平台')}
+                      placeholder={t('请输入来源平台')}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.Input
+                      field='external_order_no'
+                      label={t('外部订单号')}
+                      placeholder={t('请输入外部订单号（可选）')}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.TextArea
+                      field='notes'
+                      label={t('备注')}
+                      placeholder={t('请输入备注（可选）')}
+                      autosize={{ minRows: 3, maxRows: 6 }}
+                      maxCount={500}
+                    />
+                  </Col>
+                </Row>
+              </Card>
+            </div>
+          )}
+        </Form>
+      </Spin>
+    </SideSheet>
   );
 };
 

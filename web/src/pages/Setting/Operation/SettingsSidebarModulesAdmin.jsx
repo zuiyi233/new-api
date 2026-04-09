@@ -57,8 +57,10 @@ const DEFAULT_SIDEBAR_MODULES_ADMIN = {
     channel: true,
     models: true,
     deployment: true,
+    code_center: true,
     redemption: true,
     registration_code: true,
+    subscription_code: true,
     user: true,
     subscription: true,
     setting: true,
@@ -241,6 +243,11 @@ export default function SettingsSidebarModulesAdmin(props) {
           description: t('订阅套餐管理'),
         },
         {
+          key: 'code_center',
+          title: t('码中心'),
+          description: t('统一管理兑换码、注册码和订阅码'),
+        },
+        {
           key: 'redemption',
           title: t('兑换码管理'),
           description: t('兑换码生成管理'),
@@ -249,6 +256,11 @@ export default function SettingsSidebarModulesAdmin(props) {
           key: 'registration_code',
           title: t('注册码管理'),
           description: t('注册码准入管理'),
+        },
+        {
+          key: 'subscription_code',
+          title: t('订阅码管理'),
+          description: t('订阅码发放管理'),
         },
         { key: 'user', title: t('用户管理'), description: t('用户账户管理') },
         {

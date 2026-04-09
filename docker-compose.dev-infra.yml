@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: new-api
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - '${DEV_PG_PORT:-35432}:5432'
+    networks:
+      - new-api-network
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - '${DEV_REDIS_PORT:-36379}:6379'
+    networks:
+      - new-api-network
+
+volumes:
+  pg_data:
+    name: new-api-main_pg_data
+
+networks:
+  new-api-network:
+    name: new-api-main_new-api-network

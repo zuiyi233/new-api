@@ -113,6 +113,21 @@ export const getRegistrationCodesColumns = ({
       render: (text) => <Tag color='blue'>{text || 'novel_product'}</Tag>,
     },
     {
+      title: t('批次号'),
+      dataIndex: 'batch_no',
+      render: (text) => <div>{text || '-'}</div>,
+    },
+    {
+      title: t('渠道'),
+      dataIndex: 'channel',
+      render: (text) => <div>{text || '-'}</div>,
+    },
+    {
+      title: t('来源平台'),
+      dataIndex: 'source_platform',
+      render: (text) => <div>{text || '-'}</div>,
+    },
+    {
       title: t('已用/上限'),
       dataIndex: 'used_count',
       render: (_, record) => {

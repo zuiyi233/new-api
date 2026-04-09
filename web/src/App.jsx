@@ -34,7 +34,9 @@ import PasswordResetConfirm from './components/auth/PasswordResetConfirm';
 import Channel from './pages/Channel';
 import Token from './pages/Token';
 import Redemption from './pages/Redemption';
+import CodeCenter from './pages/CodeCenter';
 import RegistrationCode from './pages/RegistrationCode';
+import SubscriptionCode from './pages/SubscriptionCode';
 import TopUp from './pages/TopUp';
 import Log from './pages/Log';
 import Chat from './pages/Chat';
@@ -157,6 +159,14 @@ function App() {
           }
         />
         <Route
+          path='/console/code-center'
+          element={
+            <AdminRoute>
+              <CodeCenter />
+            </AdminRoute>
+          }
+        />
+        <Route
           path='/console/redemption'
           element={
             <AdminRoute>
@@ -169,6 +179,14 @@ function App() {
           element={
             <AdminRoute>
               <RegistrationCode />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/subscription-code'
+          element={
+            <AdminRoute>
+              <SubscriptionCode />
             </AdminRoute>
           }
         />

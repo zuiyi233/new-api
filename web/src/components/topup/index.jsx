@@ -113,30 +113,39 @@ const TopUp = () => {
   });
 
   const topUp = async () => {
-    if (redemptionCode === '') {
-      showInfo(t('请输入兑换码！'));
+    const inputCode = redemptionCode.trim();
+    if (inputCode === '') {
+      showInfo(t('请输入兑换码或订阅码！'));
       return;
     }
     setIsSubmitting(true);
     try {
-      const res = await API.post('/api/user/topup', {
-        key: redemptionCode,
+      const res = await API.post('/api/user/redeem-code', {
+        code: inputCode,
       });
       const { success, message, data } = res.data;
       if (success) {
-        showSuccess(t('兑换成功！'));
-        Modal.success({
-          title: t('兑换成功！'),
-          content: t('成功兑换额度：') + renderQuota(data),
-          centered: true,
-        });
-        if (userState.user) {
-          const updatedUser = {
-            ...userState.user,
-            quota: userState.user.quota + data,
-          };
-          userDispatch({ type: 'login', payload: updatedUser });
+        const action = data?.action;
+        const successMessage = data?.message || t('兑换成功！');
+        showSuccess(successMessage);
+
+        if (action === 'create_subscription') {
+          Modal.success({
+            title: successMessage,
+            content:
+              t('已开通订阅套餐：') +
+              (data?.subscription?.plan_title || t('订阅套餐')),
+            centered: true,
+          });
+        } else {
+          Modal.success({
+            title: successMessage,
+            content: t('成功兑换额度：') + renderQuota(data?.quota || 0),
+            centered: true,
+          });
         }
+
+        await Promise.allSettled([getUserQuota(), getSubscriptionSelf()]);
         setRedemptionCode('');
       } else {
         showError(message);
@@ -317,32 +326,32 @@ const TopUp = () => {
 
   const waffoTopUp = async (payMethodIndex) => {
     try {
-        if (topUpCount < waffoMinTopUp) {
-            showError(t('充值数量不能小于') + waffoMinTopUp);
-            return;
-        }
-        setPaymentLoading(true);
-        const requestBody = {
-            amount: parseInt(topUpCount),
-        };
-        if (payMethodIndex != null) {
-            requestBody.pay_method_index = payMethodIndex;
-        }
-        const res = await API.post('/api/user/waffo/pay', requestBody);
-        if (res !== undefined) {
-            const { message, data } = res.data;
-            if (message === 'success' && data?.payment_url) {
-                window.open(data.payment_url, '_blank');
-            } else {
-                showError(data || t('支付请求失败'));
-            }
+      if (topUpCount < waffoMinTopUp) {
+        showError(t('充值数量不能小于') + waffoMinTopUp);
+        return;
+      }
+      setPaymentLoading(true);
+      const requestBody = {
+        amount: parseInt(topUpCount),
+      };
+      if (payMethodIndex != null) {
+        requestBody.pay_method_index = payMethodIndex;
+      }
+      const res = await API.post('/api/user/waffo/pay', requestBody);
+      if (res !== undefined) {
+        const { message, data } = res.data;
+        if (message === 'success' && data?.payment_url) {
+          window.open(data.payment_url, '_blank');
         } else {
-            showError(res);
+          showError(data || t('支付请求失败'));
         }
+      } else {
+        showError(res);
+      }
     } catch (e) {
-        showError(t('支付请求失败'));
+      showError(t('支付请求失败'));
     } finally {
-        setPaymentLoading(false);
+      setPaymentLoading(false);
     }
   };
 

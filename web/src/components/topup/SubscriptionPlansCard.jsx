@@ -23,6 +23,7 @@ import {
   Button,
   Card,
   Divider,
+  Input,
   Select,
   Skeleton,
   Space,
@@ -33,6 +34,7 @@ import {
 import { API, showError, showSuccess, renderQuota } from '../../helpers';
 import { getCurrencyConfig } from '../../helpers/render';
 import { RefreshCw, Sparkles } from 'lucide-react';
+import { IconGift } from '@douyinfe/semi-icons';
 import SubscriptionPurchaseModal from './modals/SubscriptionPurchaseModal';
 import {
   formatSubscriptionDuration,
@@ -82,6 +84,12 @@ const SubscriptionPlansCard = ({
   activeSubscriptions = [],
   allSubscriptions = [],
   reloadSubscriptionSelf,
+  deliveryCode = '',
+  setDeliveryCode,
+  onRedeemCode,
+  redeemLoading = false,
+  topUpLink = '',
+  openTopUpLink,
   withCard = true,
 }) => {
   const [open, setOpen] = useState(false);
@@ -301,6 +309,47 @@ const SubscriptionPlansCard = ({
         </div>
       ) : (
         <Space vertical style={{ width: '100%' }} spacing={8}>
+          <Card className='!rounded-xl w-full' bodyStyle={{ padding: '12px' }}>
+            <div className='flex items-center justify-between gap-3 mb-2'>
+              <Text strong>{t('交付码兑换')}</Text>
+              <Text type='tertiary' size='small'>
+                {t('自动识别兑换码与订阅码')}
+              </Text>
+            </div>
+            <Input
+              placeholder={t('请输入兑换码或订阅码')}
+              value={deliveryCode}
+              onChange={(value) => setDeliveryCode?.(value)}
+              prefix={<IconGift />}
+              suffix={
+                <Button
+                  type='primary'
+                  theme='solid'
+                  onClick={onRedeemCode}
+                  loading={redeemLoading}
+                >
+                  {t('自动识别兑换')}
+                </Button>
+              }
+              showClear
+            />
+            {topUpLink && (
+              <div className='mt-2'>
+                <Text type='tertiary' size='small'>
+                  {t('在找交付码？')}
+                  <Text
+                    type='secondary'
+                    underline
+                    className='cursor-pointer'
+                    onClick={openTopUpLink}
+                  >
+                    {t('购买交付码')}
+                  </Text>
+                </Text>
+              </div>
+            )}
+          </Card>
+
           {/* 当前订阅状态 */}
           <Card className='!rounded-xl w-full' bodyStyle={{ padding: '12px' }}>
             <div className='flex items-center justify-between mb-2 gap-3'>

@@ -102,6 +102,7 @@ const RegistrationCodesTable = (registrationCodesData) => {
       <CardTable
         columns={tableColumns}
         dataSource={registrationCodes}
+        rowKey='id'
         scroll={compactMode ? undefined : { x: 'max-content' }}
         pagination={{
           currentPage: activePage,

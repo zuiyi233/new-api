@@ -25,7 +25,7 @@ import {
   THINK_TAG_REGEX,
   MESSAGE_ROLES,
 } from '../constants/playground.constants';
-import { TABLE_COMPACT_MODES_KEY } from '../constants';
+import { CODE_FILTER_VIEWS_KEY, TABLE_COMPACT_MODES_KEY } from '../constants';
 import { MOBILE_BREAKPOINT } from '../hooks/common/useIsMobile';
 
 const HTMLToastContent = ({ htmlContent }) => {
@@ -581,6 +581,23 @@ function writeTableCompactModes(modes) {
   }
 }
 
+function readCodeFilterViewsStorage() {
+  try {
+    const json = localStorage.getItem(CODE_FILTER_VIEWS_KEY);
+    return json ? JSON.parse(json) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeCodeFilterViewsStorage(data) {
+  try {
+    localStorage.setItem(CODE_FILTER_VIEWS_KEY, JSON.stringify(data));
+  } catch {
+    // ignore
+  }
+}
+
 export function getTableCompactMode(tableKey = 'global') {
   const modes = readTableCompactModes();
   return !!modes[tableKey];
@@ -590,6 +607,27 @@ export function setTableCompactMode(compact, tableKey = 'global') {
   const modes = readTableCompactModes();
   modes[tableKey] = compact;
   writeTableCompactModes(modes);
+}
+
+export function getCodeFilterViews(pageKey = 'global') {
+  const data = readCodeFilterViewsStorage();
+  return (
+    data[pageKey] || {
+      views: [],
+      defaultViewId: '',
+      recentViewId: '',
+    }
+  );
+}
+
+export function setCodeFilterViews(pageKey = 'global', value = {}) {
+  const data = readCodeFilterViewsStorage();
+  data[pageKey] = {
+    views: Array.isArray(value.views) ? value.views : [],
+    defaultViewId: value.defaultViewId || '',
+    recentViewId: value.recentViewId || '',
+  };
+  writeCodeFilterViewsStorage(data);
 }
 
 // -------------------------------
@@ -715,7 +753,9 @@ export const calculateModelPrice = ({
         ? formatTokenPrice(inputRatioPriceUSD * Number(record.cache_ratio))
         : null,
       createCachePrice: hasRatioValue(record.create_cache_ratio)
-        ? formatTokenPrice(inputRatioPriceUSD * Number(record.create_cache_ratio))
+        ? formatTokenPrice(
+            inputRatioPriceUSD * Number(record.create_cache_ratio),
+          )
         : null,
       imagePrice: hasRatioValue(record.image_ratio)
         ? formatTokenPrice(inputRatioPriceUSD * Number(record.image_ratio))
@@ -761,11 +801,7 @@ export const calculateModelPrice = ({
   };
 };
 
-export const getModelPriceItems = (
-  priceData,
-  t,
-  quotaDisplayType = 'USD',
-) => {
+export const getModelPriceItems = (priceData, t, quotaDisplayType = 'USD') => {
   if (priceData.isPerToken) {
     if (quotaDisplayType === 'TOKENS' || priceData.isTokensDisplay) {
       return [
@@ -861,7 +897,10 @@ export const getModelPriceItems = (
         value: priceData.audioOutputPrice,
         suffix: unitSuffix,
       },
-    ].filter((item) => item.value !== null && item.value !== undefined && item.value !== '');
+    ].filter(
+      (item) =>
+        item.value !== null && item.value !== undefined && item.value !== '',
+    );
   }
 
   return [
@@ -871,7 +910,10 @@ export const getModelPriceItems = (
       value: priceData.price,
       suffix: ` / ${t('次')}`,
     },
-  ].filter((item) => item.value !== null && item.value !== undefined && item.value !== '');
+  ].filter(
+    (item) =>
+      item.value !== null && item.value !== undefined && item.value !== '',
+  );
 };
 
 // 格式化价格信息（用于卡片视图）

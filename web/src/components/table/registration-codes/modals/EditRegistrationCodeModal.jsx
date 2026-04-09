@@ -50,6 +50,11 @@ const getInitValues = () => ({
   expires_at: null,
   max_uses: 1,
   count: 1,
+  batch_no: '',
+  campaign_name: '',
+  channel: '',
+  source_platform: '',
+  external_order_no: '',
   notes: '',
 });
 
@@ -59,6 +64,11 @@ const normalizeValues = (values) => {
   localValues.name = localValues.name?.trim() || '';
   localValues.code = localValues.code?.trim() || '';
   localValues.product_key = localValues.product_key?.trim() || 'novel_product';
+  localValues.batch_no = localValues.batch_no?.trim() || '';
+  localValues.campaign_name = localValues.campaign_name?.trim() || '';
+  localValues.channel = localValues.channel?.trim() || '';
+  localValues.source_platform = localValues.source_platform?.trim() || '';
+  localValues.external_order_no = localValues.external_order_no?.trim() || '';
   localValues.notes = localValues.notes?.trim() || '';
   localValues.max_uses = Number(localValues.max_uses) || 0;
   localValues.count = Number(localValues.count) || 1;
@@ -93,6 +103,11 @@ const EditRegistrationCodeModal = ({
       max_uses: data?.max_uses ?? 1,
       count: data?.count ?? 1,
       product_key: data?.product_key || 'novel_product',
+      batch_no: data?.batch_no || '',
+      campaign_name: data?.campaign_name || '',
+      channel: data?.channel || '',
+      source_platform: data?.source_platform || '',
+      external_order_no: data?.external_order_no || '',
       notes: data?.notes || '',
     };
 
@@ -304,6 +319,51 @@ const EditRegistrationCodeModal = ({
                       label={t('过期时间')}
                       type='dateTime'
                       placeholder={t('选择过期时间（可选，留空为永久）')}
+                      style={{ width: '100%' }}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='batch_no'
+                      label={t('批次号')}
+                      placeholder={t('例如 TB-20260409')}
+                      style={{ width: '100%' }}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='campaign_name'
+                      label={t('活动名称')}
+                      placeholder={t('请输入活动名称')}
+                      style={{ width: '100%' }}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='channel'
+                      label={t('渠道')}
+                      placeholder={t('淘宝 / 闲鱼 / 微信')}
+                      style={{ width: '100%' }}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='source_platform'
+                      label={t('来源平台')}
+                      placeholder={t('请输入来源平台')}
+                      style={{ width: '100%' }}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.Input
+                      field='external_order_no'
+                      label={t('外部订单号')}
+                      placeholder={t('请输入外部订单号（可选）')}
                       style={{ width: '100%' }}
                       showClear
                     />
