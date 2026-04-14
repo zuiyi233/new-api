@@ -135,7 +135,10 @@ export function getLucideIcon(key, selected = false) {
     case 'channel':
       return <Layers {...commonProps} color={iconColor} />;
     case 'code_center':
+    case 'code_publication':
     case 'redemption':
+    case 'order_claim':
+    case 'order_claim_admin':
       return <Gift {...commonProps} color={iconColor} />;
     case 'registration_code':
       return <Key {...commonProps} color={iconColor} />;

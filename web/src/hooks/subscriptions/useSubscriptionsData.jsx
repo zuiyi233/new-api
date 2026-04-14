@@ -131,6 +131,7 @@ export const useSubscriptionsData = () => {
 
   return {
     // Data state
+    allPlans,
     plans,
     planCount,
     loading,
@@ -149,6 +150,7 @@ export const useSubscriptionsData = () => {
     // Pagination
     activePage,
     pageSize,
+    setActivePage,
     handlePageChange,
     handlePageSizeChange,
 

@@ -17,8 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import { Banner } from '@douyinfe/semi-ui';
+import { useSearchParams } from 'react-router-dom';
 import CardPro from '../../common/ui/CardPro';
 import SubscriptionsTable from './SubscriptionsTable';
 import SubscriptionsActions from './SubscriptionsActions';
@@ -30,22 +31,49 @@ import { createCardProPagination } from '../../../helpers/utils';
 import { StatusContext } from '../../../context/Status';
 
 const SubscriptionsPage = () => {
+  const [searchParams] = useSearchParams();
   const subscriptionsData = useSubscriptionsData();
   const isMobile = useIsMobile();
   const [statusState] = useContext(StatusContext);
+  const locatorAppliedRef = useRef('');
   const enableEpay = !!statusState?.status?.enable_online_topup;
 
   const {
+    allPlans,
     showEdit,
     editingPlan,
     sheetPlacement,
     closeEdit,
     refresh,
     openCreate,
+    openEdit,
     compactMode,
     setCompactMode,
+    pageSize,
+    setActivePage,
     t,
   } = subscriptionsData;
+
+  useEffect(() => {
+    const planId = Number(searchParams.get('plan_id') || 0);
+    if (planId <= 0) {
+      locatorAppliedRef.current = '';
+      return;
+    }
+    if (!Array.isArray(allPlans) || allPlans.length === 0) return;
+    const signature = searchParams.toString();
+    if (locatorAppliedRef.current === signature) return;
+
+    const planIndex = allPlans.findIndex(
+      (item) => Number(item?.plan?.id || 0) === planId,
+    );
+    if (planIndex < 0) return;
+    locatorAppliedRef.current = signature;
+    setActivePage(Math.floor(planIndex / pageSize) + 1);
+    if (searchParams.get('auto_open') === '1') {
+      openEdit(allPlans[planIndex]);
+    }
+  }, [allPlans, openEdit, pageSize, searchParams, setActivePage]);
 
   return (
     <>

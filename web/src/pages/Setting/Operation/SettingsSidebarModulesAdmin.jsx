@@ -51,6 +51,7 @@ const DEFAULT_SIDEBAR_MODULES_ADMIN = {
     enabled: true,
     topup: true,
     personal: true,
+    order_claim: true,
   },
   admin: {
     enabled: true,
@@ -58,9 +59,11 @@ const DEFAULT_SIDEBAR_MODULES_ADMIN = {
     models: true,
     deployment: true,
     code_center: true,
+    code_publication: true,
     redemption: true,
     registration_code: true,
     subscription_code: true,
+    order_claim_admin: true,
     user: true,
     subscription: true,
     setting: true,
@@ -223,6 +226,11 @@ export default function SettingsSidebarModulesAdmin(props) {
           title: t('个人设置'),
           description: t('个人信息设置'),
         },
+        {
+          key: 'order_claim',
+          title: t('订单申领'),
+          description: t('提交站外订单申领'),
+        },
       ],
     },
     {
@@ -248,6 +256,11 @@ export default function SettingsSidebarModulesAdmin(props) {
           description: t('统一管理兑换码、注册码和订阅码'),
         },
         {
+          key: 'code_publication',
+          title: t('发放中心'),
+          description: t('查看发放记录与送达记录'),
+        },
+        {
           key: 'redemption',
           title: t('兑换码管理'),
           description: t('兑换码生成管理'),
@@ -261,6 +274,11 @@ export default function SettingsSidebarModulesAdmin(props) {
           key: 'subscription_code',
           title: t('订阅码管理'),
           description: t('订阅码发放管理'),
+        },
+        {
+          key: 'order_claim_admin',
+          title: t('订单申领管理'),
+          description: t('审核用户订单申领'),
         },
         { key: 'user', title: t('用户管理'), description: t('用户账户管理') },
         {

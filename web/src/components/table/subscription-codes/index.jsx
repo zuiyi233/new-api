@@ -17,7 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import CardPro from '../../common/ui/CardPro';
 import SubscriptionCodesTable from './SubscriptionCodesTable';
 import SubscriptionCodesActions from './SubscriptionCodesActions';
@@ -31,11 +32,14 @@ import CodeBatchSummaryModal from '../common/CodeBatchSummaryModal';
 import { useSubscriptionCodesData } from '../../../hooks/subscription-codes/useSubscriptionCodesData';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
 import { CODE_IMPORT_TEMPLATES } from '../../../constants/code-import-template.constants';
+import { API, showError } from '../../../helpers';
 import { createCardProPagination } from '../../../helpers/utils';
 
 const SubscriptionCodesPage = () => {
+  const [searchParams] = useSearchParams();
   const subscriptionCodesData = useSubscriptionCodesData();
   const isMobile = useIsMobile();
+  const locatorAppliedRef = useRef('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showBatchSummaryModal, setShowBatchSummaryModal] = useState(false);
@@ -61,6 +65,7 @@ const SubscriptionCodesPage = () => {
     searchSubscriptionCodes,
     loading,
     searching,
+    pageSize,
     compactMode,
     setCompactMode,
     planOptions,
@@ -68,6 +73,52 @@ const SubscriptionCodesPage = () => {
     t,
     buildSubscriptionCodeQuery,
   } = subscriptionCodesData;
+
+  useEffect(() => {
+    if (!formApi?.setValues) return;
+    const locatorId = Number(searchParams.get('id') || 0);
+    const locatorKeyword = searchParams.get('keyword')?.trim() || '';
+    if (locatorId <= 0 && !locatorKeyword) {
+      locatorAppliedRef.current = '';
+      return;
+    }
+    const signature = searchParams.toString();
+    if (locatorAppliedRef.current === signature) return;
+    locatorAppliedRef.current = signature;
+
+    formApi.setValues({
+      ...formInitValues,
+      searchKeyword: locatorKeyword || String(locatorId),
+    });
+
+    searchSubscriptionCodes(1, pageSize).catch((error) => {
+      showError(error?.message || t('订阅码定位查询失败'));
+    });
+
+    if (searchParams.get('auto_open') === '1' && locatorId > 0) {
+      API.get(`/api/subscription-code/${locatorId}`)
+        .then((res) => {
+          const { success, message, data } = res.data;
+          if (!success) {
+            showError(message);
+            return;
+          }
+          setEditingSubscriptionCode(data);
+          setShowEdit(true);
+        })
+        .catch((error) => {
+          showError(error?.message || t('订阅码详情加载失败'));
+        });
+    }
+  }, [
+    formApi,
+    formInitValues,
+    pageSize,
+    searchParams,
+    setEditingSubscriptionCode,
+    setShowEdit,
+    t,
+  ]);
 
   return (
     <>

@@ -38,6 +38,9 @@ const routerMap = {
   redemption: '/console/redemption',
   registration_code: '/console/registration-code',
   subscription_code: '/console/subscription-code',
+  code_publication: '/console/code-publication',
+  order_claim: '/console/order-claim',
+  order_claim_admin: '/console/order-claim-admin',
   topup: '/console/topup',
   user: '/console/user',
   subscription: '/console/subscription',
@@ -137,6 +140,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         itemKey: 'personal',
         to: '/personal',
       },
+      {
+        text: t('订单申领'),
+        itemKey: 'order_claim',
+        to: '/order-claim',
+      },
     ];
 
     // 根据配置过滤项目
@@ -196,6 +204,18 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('订阅码管理'),
         itemKey: 'subscription_code',
         to: '/subscription-code',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('发放中心'),
+        itemKey: 'code_publication',
+        to: '/code-publication',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('订单申领管理'),
+        itemKey: 'order_claim_admin',
+        to: '/order-claim-admin',
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {

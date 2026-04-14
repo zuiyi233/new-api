@@ -35,6 +35,9 @@ import Channel from './pages/Channel';
 import Token from './pages/Token';
 import Redemption from './pages/Redemption';
 import CodeCenter from './pages/CodeCenter';
+import CodePublicationCenter from './pages/CodePublicationCenter';
+import OrderClaim from './pages/OrderClaim';
+import OrderClaimAdmin from './pages/OrderClaimAdmin';
 import RegistrationCode from './pages/RegistrationCode';
 import SubscriptionCode from './pages/SubscriptionCode';
 import TopUp from './pages/TopUp';
@@ -187,6 +190,30 @@ function App() {
           element={
             <AdminRoute>
               <SubscriptionCode />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/order-claim'
+          element={
+            <PrivateRoute>
+              <OrderClaim />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/order-claim-admin'
+          element={
+            <AdminRoute>
+              <OrderClaimAdmin />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/code-publication'
+          element={
+            <AdminRoute>
+              <CodePublicationCenter />
             </AdminRoute>
           }
         />

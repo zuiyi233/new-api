@@ -228,6 +228,37 @@ const (
 )
 
 const (
+	OrderClaimStatusPendingReview = "pending_review"
+	OrderClaimStatusApproved      = "approved"
+	OrderClaimStatusRejected      = "rejected"
+)
+
+const (
+	OrderClaimActionApprove = "approve"
+	OrderClaimActionReject  = "reject"
+)
+
+const (
+	OrderClaimGrantTypeSubscription     = "subscription"
+	OrderClaimGrantTypeSubscriptionCode = "subscription_code"
+	OrderClaimGrantTypeRegistrationCode = "registration_code"
+	OrderClaimGrantTypeRedemption       = "redemption"
+)
+
+const (
+	CodePublicationStatusPendingDelivery = "pending_delivery"
+	CodePublicationStatusPublished       = "published"
+	CodePublicationStatusDelivered       = "delivered"
+	CodePublicationStatusClaimed         = "claimed"
+	CodePublicationStatusUsed            = "used"
+	CodePublicationStatusRevoked         = "revoked"
+)
+
+const (
+	CodePublicationChannelOrderClaim = "order_claim"
+)
+
+const (
 	ChannelStatusUnknown          = 0
 	ChannelStatusEnabled          = 1 // don't use 0, 0 is the default value!
 	ChannelStatusManuallyDisabled = 2 // also don't use 0

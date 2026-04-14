@@ -324,6 +324,37 @@ func SetApiRouter(router *gin.Engine) {
 			subscriptionCodeRoute.PUT("/", controller.UpdateSubscriptionCode)
 			subscriptionCodeRoute.DELETE("/:id", controller.DeleteSubscriptionCode)
 		}
+		orderClaimRoute := apiRouter.Group("/order-claim")
+		orderClaimRoute.Use(middleware.UserAuth())
+		{
+			orderClaimRoute.GET("/self", controller.GetSelfOrderClaims)
+			orderClaimRoute.POST("/self", middleware.CriticalRateLimit(), controller.CreateOrderClaim)
+		}
+		orderClaimAdminRoute := apiRouter.Group("/order-claim/admin")
+		orderClaimAdminRoute.Use(middleware.AdminAuth())
+		{
+			orderClaimAdminRoute.GET("/", controller.GetAllOrderClaims)
+			orderClaimAdminRoute.GET("/:id", controller.GetOrderClaim)
+			orderClaimAdminRoute.POST("/:id/review", controller.ReviewOrderClaim)
+		}
+		codePublicationAdminRoute := apiRouter.Group("/code-publication")
+		codePublicationAdminRoute.Use(middleware.AdminAuth())
+		{
+			codePublicationAdminRoute.GET("/", controller.GetAllCodePublications)
+			codePublicationAdminRoute.GET("/:id/detail", controller.GetCodePublicationDetail)
+			codePublicationAdminRoute.GET("/:id", controller.GetCodePublication)
+			codePublicationAdminRoute.POST("/:id/reissue", controller.ReissueCodePublication)
+			codePublicationAdminRoute.POST("/:id/revoke", controller.RevokeCodePublication)
+			codePublicationAdminRoute.POST("/:id/rollback", controller.RollbackCodePublication)
+		}
+		codeDeliveryAdminRoute := apiRouter.Group("/code-delivery")
+		codeDeliveryAdminRoute.Use(middleware.AdminAuth())
+		{
+			codeDeliveryAdminRoute.GET("/", controller.GetAllCodeDeliveries)
+			codeDeliveryAdminRoute.GET("/:id/detail", controller.GetCodeDeliveryDetail)
+			codeDeliveryAdminRoute.GET("/:id", controller.GetCodeDelivery)
+			codeDeliveryAdminRoute.POST("/:id/status", controller.UpdateCodeDeliveryStatus)
+		}
 		codeCenterRoute := apiRouter.Group("/code-center")
 		codeCenterRoute.Use(middleware.AdminAuth())
 		{

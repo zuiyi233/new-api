@@ -81,14 +81,20 @@ const NotificationSettings = ({
       enabled: true,
       topup: true,
       personal: true,
+      order_claim: true,
     },
     admin: {
       enabled: true,
       channel: true,
       models: true,
       deployment: true,
+      code_center: true,
+      code_publication: true,
       subscription: true,
       redemption: true,
+      registration_code: true,
+      subscription_code: true,
+      order_claim_admin: true,
       user: true,
       setting: true,
     },
@@ -165,14 +171,24 @@ const NotificationSettings = ({
         midjourney: true,
         task: true,
       },
-      personal: { enabled: true, topup: true, personal: true },
+      personal: {
+        enabled: true,
+        topup: true,
+        personal: true,
+        order_claim: true,
+      },
       admin: {
         enabled: true,
         channel: true,
         models: true,
         deployment: true,
+        code_center: true,
+        code_publication: true,
         subscription: true,
         redemption: true,
+        registration_code: true,
+        subscription_code: true,
+        order_claim_admin: true,
         user: true,
         setting: true,
       },
@@ -284,6 +300,11 @@ const NotificationSettings = ({
           title: t('个人设置'),
           description: t('个人信息设置'),
         },
+        {
+          key: 'order_claim',
+          title: t('订单申领'),
+          description: t('提交站外订单申领'),
+        },
       ],
     },
     // 管理员区域：根据后端权限控制显示
@@ -305,9 +326,34 @@ const NotificationSettings = ({
           description: t('订阅套餐管理'),
         },
         {
+          key: 'code_center',
+          title: t('码中心'),
+          description: t('统一查看多种码能力'),
+        },
+        {
+          key: 'code_publication',
+          title: t('发放中心'),
+          description: t('查看发放与送达记录'),
+        },
+        {
           key: 'redemption',
           title: t('兑换码管理'),
           description: t('兑换码生成管理'),
+        },
+        {
+          key: 'registration_code',
+          title: t('注册码管理'),
+          description: t('注册码准入管理'),
+        },
+        {
+          key: 'subscription_code',
+          title: t('订阅码管理'),
+          description: t('订阅码发放管理'),
+        },
+        {
+          key: 'order_claim_admin',
+          title: t('订单申领管理'),
+          description: t('审核用户订单申领'),
         },
         { key: 'user', title: t('用户管理'), description: t('用户账户管理') },
         {
@@ -478,7 +524,10 @@ const NotificationSettings = ({
                     checkedText={t('开')}
                     uncheckedText={t('关')}
                     onChange={(value) =>
-                      handleFormChange('upstreamModelUpdateNotifyEnabled', value)
+                      handleFormChange(
+                        'upstreamModelUpdateNotifyEnabled',
+                        value,
+                      )
                     }
                     extraText={t(
                       '仅管理员可用。开启后，当系统定时检测全部渠道发现上游模型变更或检测异常时，将按你选择的通知方式发送汇总通知；渠道或模型过多时会自动省略部分明细。',

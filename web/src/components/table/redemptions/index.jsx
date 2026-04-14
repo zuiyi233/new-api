@@ -17,7 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import CardPro from '../../common/ui/CardPro';
 import RedemptionsTable from './RedemptionsTable';
 import RedemptionsActions from './RedemptionsActions';
@@ -31,11 +32,14 @@ import CodeBatchSummaryModal from '../common/CodeBatchSummaryModal';
 import { useRedemptionsData } from '../../../hooks/redemptions/useRedemptionsData';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
 import { CODE_IMPORT_TEMPLATES } from '../../../constants/code-import-template.constants';
+import { API, showError } from '../../../helpers';
 import { createCardProPagination } from '../../../helpers/utils';
 
 const RedemptionsPage = () => {
+  const [searchParams] = useSearchParams();
   const redemptionsData = useRedemptionsData();
   const isMobile = useIsMobile();
+  const locatorAppliedRef = useRef('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showBatchSummaryModal, setShowBatchSummaryModal] = useState(false);
@@ -67,6 +71,7 @@ const RedemptionsPage = () => {
     searchRedemptions,
     loading,
     searching,
+    pageSize,
 
     // UI state
     compactMode,
@@ -76,6 +81,52 @@ const RedemptionsPage = () => {
     t,
     buildRedemptionQuery,
   } = redemptionsData;
+
+  useEffect(() => {
+    if (!formApi?.setValues) return;
+    const locatorId = Number(searchParams.get('id') || 0);
+    const locatorKeyword = searchParams.get('keyword')?.trim() || '';
+    if (locatorId <= 0 && !locatorKeyword) {
+      locatorAppliedRef.current = '';
+      return;
+    }
+    const signature = searchParams.toString();
+    if (locatorAppliedRef.current === signature) return;
+    locatorAppliedRef.current = signature;
+
+    formApi.setValues({
+      ...formInitValues,
+      searchKeyword: locatorKeyword || String(locatorId),
+    });
+
+    searchRedemptions(1, pageSize).catch((error) => {
+      showError(error?.message || t('兑换码定位查询失败'));
+    });
+
+    if (searchParams.get('auto_open') === '1' && locatorId > 0) {
+      API.get(`/api/redemption/${locatorId}`)
+        .then((res) => {
+          const { success, message, data } = res.data;
+          if (!success) {
+            showError(message);
+            return;
+          }
+          setEditingRedemption(data);
+          setShowEdit(true);
+        })
+        .catch((error) => {
+          showError(error?.message || t('兑换码详情加载失败'));
+        });
+    }
+  }, [
+    formApi,
+    formInitValues,
+    pageSize,
+    searchParams,
+    setEditingRedemption,
+    setShowEdit,
+    t,
+  ]);
 
   return (
     <>

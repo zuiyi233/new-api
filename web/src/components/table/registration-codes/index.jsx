@@ -17,7 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import CardPro from '../../common/ui/CardPro';
 import RegistrationCodesTable from './RegistrationCodesTable';
 import RegistrationCodesActions from './RegistrationCodesActions';
@@ -31,11 +32,14 @@ import CodeBatchSummaryModal from '../common/CodeBatchSummaryModal';
 import { useRegistrationCodesData } from '../../../hooks/registration-codes/useRegistrationCodesData';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
 import { CODE_IMPORT_TEMPLATES } from '../../../constants/code-import-template.constants';
+import { API, showError } from '../../../helpers';
 import { createCardProPagination } from '../../../helpers/utils';
 
 const RegistrationCodesPage = () => {
+  const [searchParams] = useSearchParams();
   const registrationCodesData = useRegistrationCodesData();
   const isMobile = useIsMobile();
+  const locatorAppliedRef = useRef('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showBatchSummaryModal, setShowBatchSummaryModal] = useState(false);
@@ -61,11 +65,58 @@ const RegistrationCodesPage = () => {
     searchRegistrationCodes,
     loading,
     searching,
+    pageSize,
     compactMode,
     setCompactMode,
     t,
     buildRegistrationCodeQuery,
   } = registrationCodesData;
+
+  useEffect(() => {
+    if (!formApi?.setValues) return;
+    const locatorId = Number(searchParams.get('id') || 0);
+    const locatorKeyword = searchParams.get('keyword')?.trim() || '';
+    if (locatorId <= 0 && !locatorKeyword) {
+      locatorAppliedRef.current = '';
+      return;
+    }
+    const signature = searchParams.toString();
+    if (locatorAppliedRef.current === signature) return;
+    locatorAppliedRef.current = signature;
+
+    formApi.setValues({
+      ...formInitValues,
+      searchKeyword: locatorKeyword || String(locatorId),
+    });
+
+    searchRegistrationCodes(1, pageSize).catch((error) => {
+      showError(error?.message || t('注册码定位查询失败'));
+    });
+
+    if (searchParams.get('auto_open') === '1' && locatorId > 0) {
+      API.get(`/api/registration-code/${locatorId}`)
+        .then((res) => {
+          const { success, message, data } = res.data;
+          if (!success) {
+            showError(message);
+            return;
+          }
+          setEditingRegistrationCode(data);
+          setShowEdit(true);
+        })
+        .catch((error) => {
+          showError(error?.message || t('注册码详情加载失败'));
+        });
+    }
+  }, [
+    formApi,
+    formInitValues,
+    pageSize,
+    searchParams,
+    setEditingRegistrationCode,
+    setShowEdit,
+    t,
+  ]);
 
   return (
     <>
