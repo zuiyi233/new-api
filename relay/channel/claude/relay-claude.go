@@ -1,10 +1,12 @@
 package claude
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -376,18 +378,16 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 								Text: common.GetPointer[string](mediaMessage.Text),
 							})
 						}
-					case dto.ContentTypeFile:
-						claudeFileMessage, err := buildClaudeFileMessage(c, mediaMessage.GetFile())
-						if err != nil {
-							return nil, err
-						}
-						if claudeFileMessage != nil {
-							claudeMediaMessages = append(claudeMediaMessages, *claudeFileMessage)
-						}
-					default:
-						source := mediaMessage.ToFileSource()
-						if source == nil {
+					case dto.ContentTypeImageURL:
+						imageUrl := mediaMessage.GetImageMedia()
+						if imageUrl == nil {
 							continue
+						}
+						var source *types.FileSource
+						if strings.HasPrefix(imageUrl.Url, "http") {
+							source = types.NewURLFileSource(imageUrl.Url)
+						} else {
+							source = types.NewBase64FileSource(imageUrl.Url, imageUrl.MimeType)
 						}
 						base64Data, mimeType, err := service.GetBase64Data(c, source, "formatting image for Claude")
 						if err != nil {
@@ -403,10 +403,18 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 						} else {
 							claudeMediaMessage.Type = "image"
 						}
-
 						claudeMediaMessage.Source.MediaType = mimeType
 						claudeMediaMessage.Source.Data = base64Data
 						claudeMediaMessages = append(claudeMediaMessages, claudeMediaMessage)
+					case dto.ContentTypeFile:
+						claudeFileMessage, err := buildClaudeFileMessage(mediaMessage.GetFile())
+						if err != nil {
+							return nil, err
+						}
+						if claudeFileMessage != nil {
+							claudeMediaMessages = append(claudeMediaMessages, *claudeFileMessage)
+						}
+					default:
 						continue
 					}
 				}
@@ -440,6 +448,91 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 	claudeRequest.Prompt = ""
 	claudeRequest.Messages = claudeMessages
 	return &claudeRequest, nil
+}
+
+func buildClaudeFileMessage(file *dto.MessageFile) (*dto.ClaudeMediaMessage, error) {
+	if file == nil {
+		return nil, nil
+	}
+	base64Data := strings.TrimSpace(file.FileData)
+	if base64Data == "" {
+		// file_id 模式当前不支持直接透传到 Claude，此处保持静默忽略
+		return nil, nil
+	}
+
+	mimeType, cleanData := parseDataURL(base64Data)
+	if cleanData != "" {
+		base64Data = cleanData
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.FileName))
+	if mimeType == "" {
+		switch ext {
+		case ".pdf":
+			mimeType = "application/pdf"
+		case ".txt", ".md", ".markdown", ".csv", ".json", ".xml", ".yaml", ".yml":
+			mimeType = "text/plain"
+		}
+	}
+
+	isTextFile := strings.HasPrefix(mimeType, "text/") ||
+		ext == ".txt" || ext == ".md" || ext == ".markdown" ||
+		ext == ".csv" || ext == ".json" || ext == ".xml" ||
+		ext == ".yaml" || ext == ".yml"
+	if isTextFile {
+		decoded, err := base64.StdEncoding.DecodeString(base64Data)
+		if err != nil {
+			// 非法 base64 不中断请求，按不支持类型忽略
+			return nil, nil
+		}
+		text := string(decoded)
+		return &dto.ClaudeMediaMessage{
+			Type: "text",
+			Text: common.GetPointer(text),
+		}, nil
+	}
+
+	if strings.HasPrefix(mimeType, "application/pdf") {
+		return &dto.ClaudeMediaMessage{
+			Type: "document",
+			Source: &dto.ClaudeMessageSource{
+				Type:      "base64",
+				MediaType: "application/pdf",
+				Data:      base64Data,
+			},
+		}, nil
+	}
+
+	if strings.HasPrefix(mimeType, "image/") {
+		return &dto.ClaudeMediaMessage{
+			Type: "image",
+			Source: &dto.ClaudeMessageSource{
+				Type:      "base64",
+				MediaType: mimeType,
+				Data:      base64Data,
+			},
+		}, nil
+	}
+
+	// 其余不支持的文件类型（例如未知二进制）按协议忽略
+	return nil, nil
+}
+
+func parseDataURL(data string) (mimeType string, rawData string) {
+	if !strings.HasPrefix(data, "data:") {
+		return "", data
+	}
+	commaIdx := strings.Index(data, ",")
+	if commaIdx < 0 {
+		return "", data
+	}
+	header := data[:commaIdx]
+	rawData = data[commaIdx+1:]
+	semiIdx := strings.Index(header, ";")
+	if semiIdx <= len("data:") {
+		return "", rawData
+	}
+	return header[len("data:"):semiIdx], rawData
 }
 
 func StreamResponseClaude2OpenAI(claudeResponse *dto.ClaudeResponse) *dto.ChatCompletionsStreamResponse {
