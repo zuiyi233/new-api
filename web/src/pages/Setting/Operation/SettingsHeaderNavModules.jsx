@@ -23,6 +23,7 @@ import {
   Card,
   Col,
   Form,
+  Input,
   Row,
   Switch,
   Typography,
@@ -30,6 +31,11 @@ import {
 import { API, showError, showSuccess } from '../../../helpers';
 import { useTranslation } from 'react-i18next';
 import { StatusContext } from '../../../context/Status';
+import {
+  getDefaultHeaderNavModules,
+  normalizeHeaderNavModules,
+  parseHeaderNavModules,
+} from '../../../helpers/headerNavModules';
 
 const { Text } = Typography;
 
@@ -39,16 +45,9 @@ export default function SettingsHeaderNavModules(props) {
   const [statusState, statusDispatch] = useContext(StatusContext);
 
   // 顶栏模块管理状态
-  const [headerNavModules, setHeaderNavModules] = useState({
-    home: true,
-    console: true,
-    pricing: {
-      enabled: true,
-      requireAuth: false, // 默认不需要登录鉴权
-    },
-    docs: true,
-    about: true,
-  });
+  const [headerNavModules, setHeaderNavModules] = useState(
+    getDefaultHeaderNavModules(),
+  );
 
   // 处理顶栏模块配置变更
   function handleHeaderNavModuleChange(moduleKey) {
@@ -56,6 +55,11 @@ export default function SettingsHeaderNavModules(props) {
       const newModules = { ...headerNavModules };
       if (moduleKey === 'pricing') {
         // 对于pricing模块，只更新enabled属性
+        newModules[moduleKey] = {
+          ...newModules[moduleKey],
+          enabled: checked,
+        };
+      } else if (moduleKey === 'customExternalLink') {
         newModules[moduleKey] = {
           ...newModules[moduleKey],
           enabled: checked,
@@ -77,29 +81,32 @@ export default function SettingsHeaderNavModules(props) {
     setHeaderNavModules(newModules);
   }
 
+  function handleCustomExternalLinkChange(field) {
+    return (value) => {
+      setHeaderNavModules((current) => ({
+        ...current,
+        customExternalLink: {
+          ...current.customExternalLink,
+          [field]: value,
+        },
+      }));
+    };
+  }
+
   // 重置顶栏模块为默认配置
   function resetHeaderNavModules() {
-    const defaultModules = {
-      home: true,
-      console: true,
-      pricing: {
-        enabled: true,
-        requireAuth: false,
-      },
-      docs: true,
-      about: true,
-    };
-    setHeaderNavModules(defaultModules);
+    setHeaderNavModules(getDefaultHeaderNavModules());
     showSuccess(t('已重置为默认配置'));
   }
 
   // 保存配置
   async function onSubmit() {
     setLoading(true);
+    const normalizedModules = normalizeHeaderNavModules(headerNavModules);
     try {
       const res = await API.put('/api/option/', {
         key: 'HeaderNavModules',
-        value: JSON.stringify(headerNavModules),
+        value: JSON.stringify(normalizedModules),
       });
       const { success, message } = res.data;
       if (success) {
@@ -110,7 +117,7 @@ export default function SettingsHeaderNavModules(props) {
           type: 'set',
           payload: {
             ...statusState.status,
-            HeaderNavModules: JSON.stringify(headerNavModules),
+            HeaderNavModules: JSON.stringify(normalizedModules),
           },
         });
 
@@ -129,35 +136,7 @@ export default function SettingsHeaderNavModules(props) {
   }
 
   useEffect(() => {
-    // 从 props.options 中获取配置
-    if (props.options && props.options.HeaderNavModules) {
-      try {
-        const modules = JSON.parse(props.options.HeaderNavModules);
-
-        // 处理向后兼容性：如果pricing是boolean，转换为对象格式
-        if (typeof modules.pricing === 'boolean') {
-          modules.pricing = {
-            enabled: modules.pricing,
-            requireAuth: false, // 默认不需要登录鉴权
-          };
-        }
-
-        setHeaderNavModules(modules);
-      } catch (error) {
-        // 使用默认配置
-        const defaultModules = {
-          home: true,
-          console: true,
-          pricing: {
-            enabled: true,
-            requireAuth: false,
-          },
-          docs: true,
-          about: true,
-        };
-        setHeaderNavModules(defaultModules);
-      }
-    }
+    setHeaderNavModules(parseHeaderNavModules(props.options?.HeaderNavModules));
   }, [props.options]);
 
   // 模块配置数据
@@ -187,6 +166,11 @@ export default function SettingsHeaderNavModules(props) {
       key: 'about',
       title: t('关于'),
       description: t('关于系统的详细信息'),
+    },
+    {
+      key: 'customExternalLink',
+      title: t('自定义外链'),
+      description: t('显示一个可配置名称和地址的顶部外链入口'),
     },
   ];
 
@@ -247,7 +231,9 @@ export default function SettingsHeaderNavModules(props) {
                       checked={
                         module.key === 'pricing'
                           ? headerNavModules[module.key]?.enabled
-                          : headerNavModules[module.key]
+                          : module.key === 'customExternalLink'
+                            ? headerNavModules[module.key]?.enabled
+                            : headerNavModules[module.key]
                       }
                       onChange={handleHeaderNavModuleChange(module.key)}
                       size='default'
@@ -310,6 +296,36 @@ export default function SettingsHeaderNavModules(props) {
                       </div>
                     </div>
                   )}
+
+                {module.key === 'customExternalLink' && (
+                  <div
+                    style={{
+                      borderTop: '1px solid var(--semi-color-border)',
+                      marginTop: '12px',
+                      paddingTop: '12px',
+                    }}
+                  >
+                    <div style={{ display: 'grid', gap: '12px' }}>
+                      <Input
+                        value={headerNavModules.customExternalLink?.text || ''}
+                        placeholder={t('导航名称，例如：商城')}
+                        onChange={handleCustomExternalLinkChange('text')}
+                        showClear
+                      />
+                      <Input
+                        value={headerNavModules.customExternalLink?.url || ''}
+                        placeholder={t('外链地址，例如：https://example.com')}
+                        onChange={handleCustomExternalLinkChange('url')}
+                        showClear
+                      />
+                      <Text type='secondary' size='small'>
+                        {t(
+                          '仅当开关开启、名称非空且地址为 http(s) 链接时，顶部导航才会显示该外链入口。',
+                        )}
+                      </Text>
+                    </div>
+                  </div>
+                )}
               </Card>
             </Col>
           ))}
