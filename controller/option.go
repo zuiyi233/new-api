@@ -242,6 +242,33 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "GlobalDefaultConcurrency":
+		err = setting.ValidateGlobalDefaultConcurrency(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	case "ConcurrencyCodeOverridePolicy":
+		err = setting.ValidateConcurrencyCodeOverridePolicy(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	case "ConcurrencyCounterTtlSeconds":
+		err = setting.ValidateConcurrencyCounterTtlSeconds(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
 	case "AutomaticDisableStatusCodes":
 		_, err = operation_setting.ParseHTTPStatusCodeRanges(option.Value.(string))
 		if err != nil {

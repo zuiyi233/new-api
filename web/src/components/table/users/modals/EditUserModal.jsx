@@ -76,6 +76,8 @@ const EditUserModal = (props) => {
   const [showAdjustQuotaRaw, setShowAdjustQuotaRaw] = useState(false);
   const [showQuotaInput, setShowQuotaInput] = useState(false);
   const [inputs, setInputs] = useState(null);
+  const [concurrencyOverrideInput, setConcurrencyOverrideInput] = useState('');
+  const [concurrencyAdjustLoading, setConcurrencyAdjustLoading] = useState(false);
 
   const isEdit = Boolean(userId);
 
@@ -92,6 +94,7 @@ const EditUserModal = (props) => {
     email: '',
     quota: 0,
     quota_amount: 0,
+    concurrency_override: null,
     group: 'default',
     remark: '',
   });
@@ -107,8 +110,7 @@ const EditUserModal = (props) => {
 
   const handleCancel = () => props.handleClose();
 
-  const loadUser = async () => {
-    setLoading(true);
+  const refreshUserData = async () => {
     const url = userId ? `/api/user/${userId}` : `/api/user/self`;
     const res = await API.get(url);
     const { success, message, data } = res.data;
@@ -118,10 +120,23 @@ const EditUserModal = (props) => {
         quotaToDisplayAmount(data.quota || 0).toFixed(6),
       );
       setInputs({ ...getInitValues(), ...data });
+      setConcurrencyOverrideInput(
+        data?.concurrency_override && data.concurrency_override > 0
+          ? Number(data.concurrency_override)
+          : '',
+      );
     } else {
       showError(message);
     }
-    setLoading(false);
+  };
+
+  const loadUser = async () => {
+    setLoading(true);
+    try {
+      await refreshUserData();
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -185,15 +200,7 @@ const EditUserModal = (props) => {
         setAdjustModalOpen(false);
         setAdjustQuotaLocal('');
         setAdjustAmountLocal('');
-        const userRes = await API.get(`/api/user/${userId}`);
-        if (userRes.data.success) {
-          const data = userRes.data.data;
-          data.password = '';
-          data.quota_amount = Number(
-            quotaToDisplayAmount(data.quota || 0).toFixed(6),
-          );
-          setInputs({ ...getInitValues(), ...data });
-        }
+        await refreshUserData();
         props.refresh();
       } else {
         showError(message);
@@ -202,6 +209,43 @@ const EditUserModal = (props) => {
       showError(e.message);
     }
     setAdjustLoading(false);
+  };
+
+  const updateConcurrencyOverride = async (mode) => {
+    if (!userId) return;
+    if (mode === 'set') {
+      const overrideValue = parseInt(concurrencyOverrideInput);
+      if (!overrideValue || overrideValue <= 0) {
+        showError(t('并发覆盖值必须大于 0'));
+        return;
+      }
+    }
+    setConcurrencyAdjustLoading(true);
+    try {
+      const payload = {
+        id: parseInt(userId),
+        action: 'set_concurrency_override',
+        mode,
+      };
+      if (mode === 'set') {
+        payload.value = parseInt(concurrencyOverrideInput);
+      } else {
+        payload.value = 0;
+      }
+      const res = await API.post('/api/user/manage', payload);
+      const { success, message } = res.data;
+      if (!success) {
+        showError(message);
+        return;
+      }
+      showSuccess(mode === 'set' ? t('并发覆盖设置成功') : t('并发覆盖已清除'));
+      await refreshUserData();
+      props.refresh();
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      setConcurrencyAdjustLoading(false);
+    }
   };
 
   const getPreviewText = () => {
@@ -410,6 +454,47 @@ const EditUserModal = (props) => {
                             readonly
                           />
                         </div>
+                      </Col>
+
+                      <Col span={24}>
+                        <Form.Slot label={t('并发覆盖')}>
+                          <Space vertical align='start' style={{ width: '100%' }}>
+                            <Text type='secondary'>
+                              {t('当前生效用户覆盖')}：
+                              {values.concurrency_override && values.concurrency_override > 0
+                                ? values.concurrency_override
+                                : t('未设置（走全局默认并发）')}
+                            </Text>
+                            <Space wrap>
+                              <InputNumber
+                                min={1}
+                                step={1}
+                                value={concurrencyOverrideInput}
+                                placeholder={t('输入并发覆盖值')}
+                                onChange={(value) => {
+                                  setConcurrencyOverrideInput(
+                                    value === '' || value == null ? '' : Number(value),
+                                  );
+                                }}
+                                style={{ width: 220 }}
+                              />
+                              <Button
+                                type='primary'
+                                loading={concurrencyAdjustLoading}
+                                onClick={() => updateConcurrencyOverride('set')}
+                              >
+                                {t('设置覆盖')}
+                              </Button>
+                              <Button
+                                type='secondary'
+                                loading={concurrencyAdjustLoading}
+                                onClick={() => updateConcurrencyOverride('clear')}
+                              >
+                                {t('清除覆盖')}
+                              </Button>
+                            </Space>
+                          </Space>
+                        </Form.Slot>
                       </Col>
                     </Row>
                   </Card>

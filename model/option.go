@@ -131,6 +131,10 @@ func InitOptionMap() {
 	common.OptionMap["ModelRequestRateLimitDurationMinutes"] = strconv.Itoa(setting.ModelRequestRateLimitDurationMinutes)
 	common.OptionMap["ModelRequestRateLimitSuccessCount"] = strconv.Itoa(setting.ModelRequestRateLimitSuccessCount)
 	common.OptionMap["ModelRequestRateLimitGroup"] = setting.ModelRequestRateLimitGroup2JSONString()
+	common.OptionMap["RelayConcurrencyEnabled"] = strconv.FormatBool(setting.RelayConcurrencyEnabled)
+	common.OptionMap["GlobalDefaultConcurrency"] = strconv.Itoa(setting.GlobalDefaultConcurrency)
+	common.OptionMap["ConcurrencyCodeOverridePolicy"] = setting.ConcurrencyCodeOverridePolicy
+	common.OptionMap["ConcurrencyCounterTtlSeconds"] = strconv.Itoa(setting.ConcurrencyCounterTtlSeconds)
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
 	common.OptionMap["CacheRatio"] = ratio_setting.CacheRatio2JSONString()
@@ -311,6 +315,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.CheckSensitiveOnPromptEnabled = boolValue
 		case "ModelRequestRateLimitEnabled":
 			setting.ModelRequestRateLimitEnabled = boolValue
+		case "RelayConcurrencyEnabled":
+			setting.RelayConcurrencyEnabled = boolValue
 		case "StopOnSensitiveEnabled":
 			setting.StopOnSensitiveEnabled = boolValue
 		case "SMTPSSLEnabled":
@@ -463,6 +469,18 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.ModelRequestRateLimitSuccessCount, _ = strconv.Atoi(value)
 	case "ModelRequestRateLimitGroup":
 		err = setting.UpdateModelRequestRateLimitGroupByJSONString(value)
+	case "GlobalDefaultConcurrency":
+		setting.GlobalDefaultConcurrency, _ = strconv.Atoi(value)
+		if setting.GlobalDefaultConcurrency <= 0 {
+			setting.GlobalDefaultConcurrency = 1
+		}
+	case "ConcurrencyCodeOverridePolicy":
+		setting.ConcurrencyCodeOverridePolicy = setting.NormalizeConcurrencyCodeOverridePolicy(value)
+	case "ConcurrencyCounterTtlSeconds":
+		setting.ConcurrencyCounterTtlSeconds, _ = strconv.Atoi(value)
+		if setting.ConcurrencyCounterTtlSeconds <= 0 {
+			setting.ConcurrencyCounterTtlSeconds = 600
+		}
 	case "RetryTimes":
 		common.RetryTimes, _ = strconv.Atoi(value)
 	case "DataExportInterval":

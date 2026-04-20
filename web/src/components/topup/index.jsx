@@ -137,6 +137,36 @@ const TopUp = () => {
               (data?.subscription?.plan_title || t('订阅套餐')),
             centered: true,
           });
+        } else if (action === 'grant_concurrency') {
+          const value = data?.concurrency?.value || 0;
+          const effectiveLimit = data?.concurrency?.effective_limit || 0;
+          const concurrencyText =
+            data?.concurrency?.mode === 'override'
+              ? `${t('覆盖为')} ${value}`
+              : `${t('叠加')} +${value}`;
+          Modal.success({
+            title: successMessage,
+            content: `${t('并发权益')}：${concurrencyText}，${t('当前生效并发上限')}：${effectiveLimit}`,
+            centered: true,
+          });
+        } else if (action === 'quota_and_concurrency') {
+          const value = data?.concurrency?.value || 0;
+          const effectiveLimit = data?.concurrency?.effective_limit || 0;
+          const concurrencyText =
+            data?.concurrency?.mode === 'override'
+              ? `${t('覆盖为')} ${value}`
+              : `${t('叠加')} +${value}`;
+          Modal.success({
+            title: successMessage,
+            content: (
+              <div>
+                <div>{t('成功兑换额度：') + renderQuota(data?.quota || 0)}</div>
+                <div>{`${t('并发权益')}：${concurrencyText}`}</div>
+                <div>{`${t('当前生效并发上限')}：${effectiveLimit}`}</div>
+              </div>
+            ),
+            centered: true,
+          });
         } else {
           Modal.success({
             title: successMessage,

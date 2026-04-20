@@ -27,6 +27,21 @@ import {
   REDEMPTION_ACTIONS,
 } from '../../../constants/redemption.constants';
 
+const benefitTypeLabelMap = {
+  quota: '仅额度',
+  concurrency_stack: '并发叠加',
+  concurrency_override: '并发覆盖',
+  mixed: '额度 + 并发',
+};
+
+const includesQuotaBenefit = (benefitType) =>
+  benefitType === 'quota' || benefitType === 'mixed';
+
+const includesConcurrencyBenefit = (benefitType) =>
+  benefitType === 'concurrency_stack' ||
+  benefitType === 'concurrency_override' ||
+  benefitType === 'mixed';
+
 /**
  * Check if redemption code is expired
  */
@@ -69,6 +84,34 @@ const renderStatus = (status, record, t) => {
   return (
     <Tag color='black' shape='circle'>
       {t('未知状态')}
+    </Tag>
+  );
+};
+
+const renderBenefitType = (benefitType, t) => {
+  const type = benefitType || 'quota';
+  const colorMap = {
+    quota: 'blue',
+    concurrency_stack: 'green',
+    concurrency_override: 'orange',
+    mixed: 'purple',
+  };
+  return (
+    <Tag color={colorMap[type] || 'grey'} shape='circle'>
+      {t(benefitTypeLabelMap[type] || '仅额度')}
+    </Tag>
+  );
+};
+
+const renderConcurrencyMode = (record, t) => {
+  const benefitType = record?.benefit_type || 'quota';
+  if (!includesConcurrencyBenefit(benefitType)) {
+    return <div>-</div>;
+  }
+  const mode = record?.concurrency_mode || 'stack';
+  return (
+    <Tag color={mode === 'override' ? 'orange' : 'green'} shape='circle'>
+      {mode === 'override' ? t('覆盖') : t('叠加')}
     </Tag>
   );
 };
@@ -120,9 +163,38 @@ export const getRedemptionsColumns = ({
       },
     },
     {
+      title: t('权益类型'),
+      dataIndex: 'benefit_type',
+      render: (text) => <div>{renderBenefitType(text, t)}</div>,
+    },
+    {
+      title: t('并发模式'),
+      dataIndex: 'concurrency_mode',
+      render: (text, record) => <div>{renderConcurrencyMode(record, t)}</div>,
+    },
+    {
+      title: t('并发权益值'),
+      dataIndex: 'concurrency_value',
+      render: (text, record) => {
+        const benefitType = record?.benefit_type || 'quota';
+        if (!includesConcurrencyBenefit(benefitType)) {
+          return <div>-</div>;
+        }
+        return (
+          <Tag color='blue' shape='circle'>
+            {Number(text) || 0}
+          </Tag>
+        );
+      },
+    },
+    {
       title: t('额度'),
       dataIndex: 'quota',
-      render: (text) => {
+      render: (text, record) => {
+        const benefitType = record?.benefit_type || 'quota';
+        if (!includesQuotaBenefit(benefitType)) {
+          return <div>-</div>;
+        }
         return (
           <div>
             <Tag color='grey' shape='circle'>
@@ -144,6 +216,17 @@ export const getRedemptionsColumns = ({
       dataIndex: 'expired_time',
       render: (text) => {
         return <div>{text === 0 ? t('永不过期') : renderTimestamp(text)}</div>;
+      },
+    },
+    {
+      title: t('并发权益到期'),
+      dataIndex: 'benefit_expires_at',
+      render: (text, record) => {
+        const benefitType = record?.benefit_type || 'quota';
+        if (!includesConcurrencyBenefit(benefitType)) {
+          return <div>-</div>;
+        }
+        return <div>{text === 0 ? t('永久') : renderTimestamp(text)}</div>;
       },
     },
     {

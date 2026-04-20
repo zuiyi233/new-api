@@ -12,25 +12,36 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	RedemptionBenefitTypeQuota               = "quota"
+	RedemptionBenefitTypeConcurrencyStack    = "concurrency_stack"
+	RedemptionBenefitTypeConcurrencyOverride = "concurrency_override"
+	RedemptionBenefitTypeMixed               = "mixed"
+)
+
 type Redemption struct {
-	Id              int            `json:"id"`
-	UserId          int            `json:"user_id"`
-	Key             string         `json:"key" gorm:"type:char(32);uniqueIndex"`
-	Status          int            `json:"status" gorm:"default:1"`
-	Name            string         `json:"name" gorm:"index"`
-	Quota           int            `json:"quota" gorm:"default:100"`
-	BatchNo         string         `json:"batch_no" gorm:"type:varchar(128);index"`
-	CampaignName    string         `json:"campaign_name" gorm:"type:varchar(128);index"`
-	Channel         string         `json:"channel" gorm:"type:varchar(64);index"`
-	SourcePlatform  string         `json:"source_platform" gorm:"type:varchar(64);index"`
-	ExternalOrderNo string         `json:"external_order_no" gorm:"type:varchar(128);index"`
-	Notes           string         `json:"notes" gorm:"type:text"`
-	CreatedTime     int64          `json:"created_time" gorm:"bigint"`
-	RedeemedTime    int64          `json:"redeemed_time" gorm:"bigint"`
-	Count           int            `json:"count" gorm:"-:all"` // only for api request
-	UsedUserId      int            `json:"used_user_id"`
-	DeletedAt       gorm.DeletedAt `gorm:"index"`
-	ExpiredTime     int64          `json:"expired_time" gorm:"bigint"` // 过期时间，0 表示不过期
+	Id               int            `json:"id"`
+	UserId           int            `json:"user_id"`
+	Key              string         `json:"key" gorm:"type:char(32);uniqueIndex"`
+	Status           int            `json:"status" gorm:"default:1"`
+	Name             string         `json:"name" gorm:"index"`
+	Quota            int            `json:"quota" gorm:"default:100"`
+	BenefitType      string         `json:"benefit_type" gorm:"type:varchar(32);default:'quota';index"`
+	ConcurrencyMode  string         `json:"concurrency_mode" gorm:"type:varchar(16)"`
+	ConcurrencyValue int            `json:"concurrency_value" gorm:"default:0"`
+	BenefitExpiresAt int64          `json:"benefit_expires_at" gorm:"bigint;default:0"`
+	BatchNo          string         `json:"batch_no" gorm:"type:varchar(128);index"`
+	CampaignName     string         `json:"campaign_name" gorm:"type:varchar(128);index"`
+	Channel          string         `json:"channel" gorm:"type:varchar(64);index"`
+	SourcePlatform   string         `json:"source_platform" gorm:"type:varchar(64);index"`
+	ExternalOrderNo  string         `json:"external_order_no" gorm:"type:varchar(128);index"`
+	Notes            string         `json:"notes" gorm:"type:text"`
+	CreatedTime      int64          `json:"created_time" gorm:"bigint"`
+	RedeemedTime     int64          `json:"redeemed_time" gorm:"bigint"`
+	Count            int            `json:"count" gorm:"-:all"` // only for api request
+	UsedUserId       int            `json:"used_user_id"`
+	DeletedAt        gorm.DeletedAt `gorm:"index"`
+	ExpiredTime      int64          `json:"expired_time" gorm:"bigint"` // 过期时间，0 表示不过期
 }
 
 type RedemptionQuery struct {
@@ -49,6 +60,42 @@ type RedemptionQuery struct {
 
 func normalizeRedemptionKey(key string) string {
 	return strings.ToUpper(strings.TrimSpace(key))
+}
+
+func normalizeRedemptionBenefitType(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case RedemptionBenefitTypeConcurrencyStack:
+		return RedemptionBenefitTypeConcurrencyStack
+	case RedemptionBenefitTypeConcurrencyOverride:
+		return RedemptionBenefitTypeConcurrencyOverride
+	case RedemptionBenefitTypeMixed:
+		return RedemptionBenefitTypeMixed
+	default:
+		return RedemptionBenefitTypeQuota
+	}
+}
+
+func normalizeRedemptionConcurrencyMode(benefitType string, raw string) string {
+	switch normalizeRedemptionBenefitType(benefitType) {
+	case RedemptionBenefitTypeConcurrencyOverride:
+		return ConcurrencyGrantModeOverride
+	case RedemptionBenefitTypeConcurrencyStack:
+		return ConcurrencyGrantModeStack
+	default:
+		return normalizeConcurrencyGrantMode(raw)
+	}
+}
+
+func redemptionIncludesQuotaBenefit(benefitType string) bool {
+	bt := normalizeRedemptionBenefitType(benefitType)
+	return bt == RedemptionBenefitTypeQuota || bt == RedemptionBenefitTypeMixed
+}
+
+func redemptionIncludesConcurrencyBenefit(benefitType string) bool {
+	bt := normalizeRedemptionBenefitType(benefitType)
+	return bt == RedemptionBenefitTypeConcurrencyStack ||
+		bt == RedemptionBenefitTypeConcurrencyOverride ||
+		bt == RedemptionBenefitTypeMixed
 }
 
 func applyRedemptionFilters(query *gorm.DB, filters RedemptionQuery) (*gorm.DB, error) {
@@ -238,9 +285,35 @@ func RedeemWithDetail(key string, userId int) (quota int, redemption *Redemption
 		if redemption.ExpiredTime != 0 && redemption.ExpiredTime < common.GetTimestamp() {
 			return errors.New("该兑换码已过期")
 		}
-		err = tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error
-		if err != nil {
-			return err
+
+		benefitType := normalizeRedemptionBenefitType(redemption.BenefitType)
+		if redemptionIncludesQuotaBenefit(benefitType) {
+			if redemption.Quota <= 0 {
+				return errors.New("兑换码额度无效")
+			}
+			if err = tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error; err != nil {
+				return err
+			}
+		}
+		if redemptionIncludesConcurrencyBenefit(benefitType) {
+			mode := normalizeRedemptionConcurrencyMode(benefitType, redemption.ConcurrencyMode)
+			if redemption.ConcurrencyValue <= 0 {
+				return errors.New("兑换码并发权益值无效")
+			}
+			grant := &UserConcurrencyGrant{
+				UserId:     userId,
+				SourceType: ConcurrencyGrantSourceRedemption,
+				SourceId:   redemption.Id,
+				Mode:       mode,
+				Value:      redemption.ConcurrencyValue,
+				Status:     ConcurrencyGrantStatusActive,
+				StartsAt:   common.GetTimestamp(),
+				ExpiresAt:  redemption.BenefitExpiresAt,
+				Notes:      fmt.Sprintf("兑换码 %s", redemption.Key),
+			}
+			if err = CreateUserConcurrencyGrantTx(tx, grant); err != nil {
+				return err
+			}
 		}
 		redemption.RedeemedTime = common.GetTimestamp()
 		redemption.Status = common.RedemptionCodeStatusUsed
@@ -251,7 +324,24 @@ func RedeemWithDetail(key string, userId int) (quota int, redemption *Redemption
 	if err != nil {
 		return 0, nil, err
 	}
-	RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
+	benefitType := normalizeRedemptionBenefitType(redemption.BenefitType)
+	switch {
+	case redemptionIncludesQuotaBenefit(benefitType) && redemptionIncludesConcurrencyBenefit(benefitType):
+		RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码获取混合权益，额度 %s，并发%s %d，兑换码ID %d",
+			logger.LogQuota(redemption.Quota),
+			normalizeRedemptionConcurrencyMode(benefitType, redemption.ConcurrencyMode),
+			redemption.ConcurrencyValue,
+			redemption.Id,
+		))
+	case redemptionIncludesConcurrencyBenefit(benefitType):
+		RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码获取并发权益 %s %d，兑换码ID %d",
+			normalizeRedemptionConcurrencyMode(benefitType, redemption.ConcurrencyMode),
+			redemption.ConcurrencyValue,
+			redemption.Id,
+		))
+	default:
+		RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
+	}
 	return redemption.Quota, redemption, nil
 }
 
@@ -271,7 +361,23 @@ func (redemption *Redemption) SelectUpdate() error {
 func (redemption *Redemption) Update() error {
 	redemption.Key = normalizeRedemptionKey(redemption.Key)
 	var err error
-	err = DB.Model(redemption).Select("name", "status", "quota", "batch_no", "campaign_name", "channel", "source_platform", "external_order_no", "notes", "redeemed_time", "expired_time").Updates(redemption).Error
+	err = DB.Model(redemption).Select(
+		"name",
+		"status",
+		"quota",
+		"benefit_type",
+		"concurrency_mode",
+		"concurrency_value",
+		"benefit_expires_at",
+		"batch_no",
+		"campaign_name",
+		"channel",
+		"source_platform",
+		"external_order_no",
+		"notes",
+		"redeemed_time",
+		"expired_time",
+	).Updates(redemption).Error
 	return err
 }
 
@@ -336,9 +442,8 @@ func ValidateRedemptionAdminPayload(redemption *Redemption) error {
 	if redemption.Key != "" && len([]rune(redemption.Key)) > 64 {
 		return errors.New("兑换码长度不能超过 64 个字符")
 	}
-	if redemption.Quota <= 0 {
-		return errors.New("兑换额度必须大于 0")
-	}
+	redemption.BenefitType = normalizeRedemptionBenefitType(redemption.BenefitType)
+	redemption.ConcurrencyMode = normalizeRedemptionConcurrencyMode(redemption.BenefitType, redemption.ConcurrencyMode)
 	if redemption.Count < 0 {
 		return errors.New("批量创建数量不能小于 0")
 	}
@@ -351,8 +456,28 @@ func ValidateRedemptionAdminPayload(redemption *Redemption) error {
 	if redemption.Status != common.RedemptionCodeStatusEnabled && redemption.Status != common.RedemptionCodeStatusDisabled {
 		return errors.New("兑换码状态无效")
 	}
+	now := common.GetTimestamp()
 	if redemption.ExpiredTime != 0 && redemption.ExpiredTime < common.GetTimestamp() {
 		return errors.New("过期时间不能早于当前时间")
+	}
+	if redemption.BenefitExpiresAt != 0 && redemption.BenefitExpiresAt < now {
+		return errors.New("权益过期时间不能早于当前时间")
+	}
+	if redemptionIncludesQuotaBenefit(redemption.BenefitType) {
+		if redemption.Quota <= 0 {
+			return errors.New("兑换额度必须大于 0")
+		}
+	} else if redemption.Quota < 0 {
+		return errors.New("兑换额度不能为负数")
+	}
+	if redemptionIncludesConcurrencyBenefit(redemption.BenefitType) {
+		if redemption.ConcurrencyValue <= 0 {
+			return errors.New("并发权益值必须大于 0")
+		}
+	} else {
+		redemption.ConcurrencyValue = 0
+		redemption.BenefitExpiresAt = 0
+		redemption.ConcurrencyMode = ""
 	}
 	redemption.BatchNo = strings.TrimSpace(redemption.BatchNo)
 	redemption.CampaignName = strings.TrimSpace(redemption.CampaignName)

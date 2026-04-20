@@ -73,6 +73,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/self/groups", controller.GetUserGroups)
 				selfRoute.GET("/self", controller.GetSelf)
 				selfRoute.GET("/self/entitlements", controller.GetSelfEntitlements)
+				selfRoute.GET("/self/concurrency", controller.GetSelfConcurrency)
 				selfRoute.GET("/models", middleware.RequireProductEntitlement(common.ProductKeyNovel), controller.GetUserModels)
 				selfRoute.PUT("/self", controller.UpdateSelf)
 				selfRoute.DELETE("/self", controller.DeleteSelf)

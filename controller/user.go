@@ -432,31 +432,38 @@ func GetSelf(c *gin.Context) {
 
 	// 构建响应数据，包含用户信息和权限
 	responseData := map[string]interface{}{
-		"id":                user.Id,
-		"username":          user.Username,
-		"display_name":      user.DisplayName,
-		"role":              user.Role,
-		"status":            user.Status,
-		"email":             user.Email,
-		"github_id":         user.GitHubId,
-		"discord_id":        user.DiscordId,
-		"oidc_id":           user.OidcId,
-		"wechat_id":         user.WeChatId,
-		"telegram_id":       user.TelegramId,
-		"group":             user.Group,
-		"quota":             user.Quota,
-		"used_quota":        user.UsedQuota,
-		"request_count":     user.RequestCount,
-		"aff_code":          user.AffCode,
-		"aff_count":         user.AffCount,
-		"aff_quota":         user.AffQuota,
-		"aff_history_quota": user.AffHistoryQuota,
-		"inviter_id":        user.InviterId,
-		"linux_do_id":       user.LinuxDOId,
-		"setting":           user.Setting,
-		"stripe_customer":   user.StripeCustomer,
-		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
-		"permissions":       permissions,                // 新增权限字段
+		"id":                   user.Id,
+		"username":             user.Username,
+		"display_name":         user.DisplayName,
+		"role":                 user.Role,
+		"status":               user.Status,
+		"email":                user.Email,
+		"github_id":            user.GitHubId,
+		"discord_id":           user.DiscordId,
+		"oidc_id":              user.OidcId,
+		"wechat_id":            user.WeChatId,
+		"telegram_id":          user.TelegramId,
+		"group":                user.Group,
+		"quota":                user.Quota,
+		"used_quota":           user.UsedQuota,
+		"request_count":        user.RequestCount,
+		"aff_code":             user.AffCode,
+		"aff_count":            user.AffCount,
+		"aff_quota":            user.AffQuota,
+		"aff_history_quota":    user.AffHistoryQuota,
+		"inviter_id":           user.InviterId,
+		"linux_do_id":          user.LinuxDOId,
+		"setting":              user.Setting,
+		"concurrency_override": user.ConcurrencyOverride,
+		"stripe_customer":      user.StripeCustomer,
+		"sidebar_modules":      userSetting.SidebarModules, // 正确提取sidebar_modules字段
+		"permissions":          permissions,                // 新增权限字段
+	}
+	if snapshot, snapErr := service.BuildUserConcurrencySnapshot(user, common.GetTimestamp()); snapErr == nil {
+		responseData["effective_concurrency_limit"] = snapshot.EffectiveLimit
+		responseData["global_default_concurrency"] = snapshot.GlobalDefault
+		responseData["code_stack_concurrency"] = snapshot.CodeStackTotal
+		responseData["code_override_concurrency"] = snapshot.CodeOverrideValue
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -497,6 +504,15 @@ func GetSelfEntitlements(c *gin.Context) {
 		"items":             items,
 		"has_novel_product": hasNovelProduct,
 	})
+}
+
+func GetSelfConcurrency(c *gin.Context) {
+	snapshot, err := service.GetUserConcurrencySnapshot(c.GetInt("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, snapshot)
 }
 
 // 计算用户权限的辅助函数
@@ -1022,6 +1038,32 @@ func ManageUser(c *gin.Context) {
 		default:
 			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"message": "",
+		})
+		return
+	case "set_concurrency_override":
+		adminName := c.GetString("username")
+		mode := strings.ToLower(strings.TrimSpace(req.Mode))
+		if mode == "clear" || mode == "unset" {
+			if err := model.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("concurrency_override", nil).Error; err != nil {
+				common.ApiError(c, err)
+				return
+			}
+			model.RecordLog(user.Id, model.LogTypeManage, fmt.Sprintf("管理员(%s)清除用户并发覆盖", adminName))
+		} else {
+			if req.Value <= 0 {
+				common.ApiErrorMsg(c, "并发覆盖值必须大于 0")
+				return
+			}
+			overrideVal := req.Value
+			if err := model.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("concurrency_override", &overrideVal).Error; err != nil {
+				common.ApiError(c, err)
+				return
+			}
+			model.RecordLog(user.Id, model.LogTypeManage, fmt.Sprintf("管理员(%s)设置用户并发覆盖为 %d", adminName, overrideVal))
 		}
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,

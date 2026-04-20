@@ -54,6 +54,10 @@ const { Text, Title } = Typography;
 const getInitValues = () => ({
   name: '',
   key: '',
+  benefit_type: 'quota',
+  concurrency_mode: 'stack',
+  concurrency_value: 0,
+  benefit_expires_at: null,
   quota: 100000,
   status: 1,
   count: 1,
@@ -70,6 +74,12 @@ const normalizeValues = (values) => {
   const localValues = { ...values };
   localValues.name = localValues.name?.trim() || '';
   localValues.key = localValues.key?.trim() || '';
+  localValues.benefit_type = localValues.benefit_type || 'quota';
+  localValues.concurrency_mode = localValues.concurrency_mode || 'stack';
+  localValues.concurrency_value = Number(localValues.concurrency_value) || 0;
+  localValues.benefit_expires_at = localValues.benefit_expires_at
+    ? Math.floor(localValues.benefit_expires_at.getTime() / 1000)
+    : 0;
   localValues.quota = Number(localValues.quota) || 0;
   localValues.status = Number(localValues.status) || 1;
   localValues.count = Number(localValues.count) || 1;
@@ -106,6 +116,12 @@ const EditRedemptionModal = ({
     formApiRef.current?.setValues({
       ...getInitValues(),
       ...data,
+      benefit_type: data?.benefit_type || 'quota',
+      concurrency_mode: data?.concurrency_mode || 'stack',
+      concurrency_value: data?.concurrency_value ?? 0,
+      benefit_expires_at: data?.benefit_expires_at
+        ? new Date(data.benefit_expires_at * 1000)
+        : null,
       expired_time: data?.expired_time ? new Date(data.expired_time * 1000) : null,
       count: data?.count ?? 1,
       quota: data?.quota ?? 100000,
@@ -158,9 +174,26 @@ const EditRedemptionModal = ({
       showError(t('请输入名称'));
       return;
     }
-    if (payload.quota <= 0) {
+    const includesQuota =
+      payload.benefit_type === 'quota' || payload.benefit_type === 'mixed';
+    const includesConcurrency =
+      payload.benefit_type === 'concurrency_stack' ||
+      payload.benefit_type === 'concurrency_override' ||
+      payload.benefit_type === 'mixed';
+    if (includesQuota && payload.quota <= 0) {
       showError(t('额度必须大于 0'));
       return;
+    }
+    if (includesConcurrency && payload.concurrency_value <= 0) {
+      showError(t('并发权益值必须大于 0'));
+      return;
+    }
+    if (!includesQuota) {
+      payload.quota = 0;
+    }
+    if (!includesConcurrency) {
+      payload.concurrency_value = 0;
+      payload.benefit_expires_at = 0;
     }
     if (!isEdit && payload.count <= 0) {
       showError(t('生成数量必须大于 0'));
@@ -303,6 +336,54 @@ const EditRedemptionModal = ({
                     </Col>
                   )}
                   <Col span={12}>
+                    <Form.Select
+                      field='benefit_type'
+                      label={t('权益类型')}
+                      optionList={[
+                        { label: t('仅额度'), value: 'quota' },
+                        { label: t('并发叠加'), value: 'concurrency_stack' },
+                        { label: t('并发覆盖'), value: 'concurrency_override' },
+                        { label: t('额度 + 并发'), value: 'mixed' },
+                      ]}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                  {(values.benefit_type === 'concurrency_stack' ||
+                    values.benefit_type === 'concurrency_override' ||
+                    values.benefit_type === 'mixed') && (
+                    <>
+                      <Col span={12}>
+                        <Form.Select
+                          field='concurrency_mode'
+                          label={t('并发模式')}
+                          optionList={[
+                            { label: t('叠加'), value: 'stack' },
+                            { label: t('覆盖'), value: 'override' },
+                          ]}
+                          style={{ width: '100%' }}
+                        />
+                      </Col>
+                      <Col span={12}>
+                        <Form.InputNumber
+                          field='concurrency_value'
+                          label={t('并发权益值')}
+                          min={0}
+                          style={{ width: '100%' }}
+                        />
+                      </Col>
+                      <Col span={12}>
+                        <Form.DatePicker
+                          field='benefit_expires_at'
+                          label={t('并发权益到期时间')}
+                          type='dateTime'
+                          placeholder={t('留空为永久')}
+                          style={{ width: '100%' }}
+                          showClear
+                        />
+                      </Col>
+                    </>
+                  )}
+                  <Col span={12}>
                     <Form.DatePicker
                       field='expired_time'
                       label={t('过期时间')}
@@ -340,25 +421,28 @@ const EditRedemptionModal = ({
                 </div>
 
                 <Row gutter={12}>
-                  <Col span={12}>
-                    <Form.AutoComplete
-                      field='quota'
-                      label={t('额度')}
-                      placeholder={t('请输入额度')}
-                      style={{ width: '100%' }}
-                      type='number'
-                      extraText={renderQuotaWithPrompt(Number(values.quota) || 0)}
-                      data={[
-                        { value: 500000, label: '1$' },
-                        { value: 5000000, label: '10$' },
-                        { value: 25000000, label: '50$' },
-                        { value: 50000000, label: '100$' },
-                        { value: 250000000, label: '500$' },
-                        { value: 500000000, label: '1000$' },
-                      ]}
-                      showClear
-                    />
-                  </Col>
+                  {(values.benefit_type === 'quota' ||
+                    values.benefit_type === 'mixed') && (
+                    <Col span={12}>
+                      <Form.AutoComplete
+                        field='quota'
+                        label={t('额度')}
+                        placeholder={t('请输入额度')}
+                        style={{ width: '100%' }}
+                        type='number'
+                        extraText={renderQuotaWithPrompt(Number(values.quota) || 0)}
+                        data={[
+                          { value: 500000, label: '1$' },
+                          { value: 5000000, label: '10$' },
+                          { value: 25000000, label: '50$' },
+                          { value: 50000000, label: '100$' },
+                          { value: 250000000, label: '500$' },
+                          { value: 500000000, label: '1000$' },
+                        ]}
+                        showClear
+                      />
+                    </Col>
+                  )}
                   {!isEdit && (
                     <Col span={12}>
                       <Form.InputNumber

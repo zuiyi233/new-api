@@ -39,6 +39,10 @@ export default function RequestRateLimit(props) {
     ModelRequestRateLimitSuccessCount: 1000,
     ModelRequestRateLimitDurationMinutes: 1,
     ModelRequestRateLimitGroup: '',
+    RelayConcurrencyEnabled: false,
+    GlobalDefaultConcurrency: 3,
+    ConcurrencyCodeOverridePolicy: 'max',
+    ConcurrencyCounterTtlSeconds: 600,
   });
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
@@ -232,6 +236,85 @@ export default function RequestRateLimit(props) {
             <Row>
               <Button size='default' onClick={onSubmit}>
                 {t('保存模型速率限制')}
+              </Button>
+            </Row>
+          </Form.Section>
+
+          <Form.Section text={t('用户并发限制')}>
+            <Row gutter={16}>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.Switch
+                  field={'RelayConcurrencyEnabled'}
+                  label={t('启用用户并发限制')}
+                  size='default'
+                  checkedText='｜'
+                  uncheckedText='〇'
+                  onChange={(value) => {
+                    setInputs({
+                      ...inputs,
+                      RelayConcurrencyEnabled: value,
+                    });
+                  }}
+                />
+              </Col>
+            </Row>
+            <Row gutter={16}>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.InputNumber
+                  label={t('全局默认并发')}
+                  step={1}
+                  min={1}
+                  max={2147483647}
+                  suffix={t('路')}
+                  extraText={t('未设置用户覆盖时生效的并发上限')}
+                  field={'GlobalDefaultConcurrency'}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      GlobalDefaultConcurrency: String(value),
+                    })
+                  }
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.Select
+                  field={'ConcurrencyCodeOverridePolicy'}
+                  label={t('兑换码覆盖策略')}
+                  style={{ width: '100%' }}
+                  optionList={[
+                    { label: t('取最大值（max）'), value: 'max' },
+                    { label: t('取最新一条（latest）'), value: 'latest' },
+                  ]}
+                  extraText={t('当用户存在多条“覆盖型并发码”时的计算策略')}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      ConcurrencyCodeOverridePolicy: value || 'max',
+                    })
+                  }
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.InputNumber
+                  label={t('并发计数 TTL')}
+                  step={1}
+                  min={1}
+                  max={86400}
+                  suffix={t('秒')}
+                  extraText={t('并发请求占位的保活时间，建议 60~600 秒')}
+                  field={'ConcurrencyCounterTtlSeconds'}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      ConcurrencyCounterTtlSeconds: String(value),
+                    })
+                  }
+                />
+              </Col>
+            </Row>
+            <Row>
+              <Button size='default' onClick={onSubmit}>
+                {t('保存并发限制设置')}
               </Button>
             </Row>
           </Form.Section>

@@ -140,19 +140,23 @@ func AddRedemption(c *gin.Context) {
 			keyValue = common.GetUUID()
 		}
 		redemption := &model.Redemption{
-			UserId:          operatorId,
-			Key:             keyValue,
-			Status:          payload.Status,
-			Name:            payload.Name,
-			Quota:           payload.Quota,
-			BatchNo:         payload.BatchNo,
-			CampaignName:    payload.CampaignName,
-			Channel:         payload.Channel,
-			SourcePlatform:  payload.SourcePlatform,
-			ExternalOrderNo: payload.ExternalOrderNo,
-			Notes:           payload.Notes,
-			CreatedTime:     common.GetTimestamp(),
-			ExpiredTime:     payload.ExpiredTime,
+			UserId:           operatorId,
+			Key:              keyValue,
+			Status:           payload.Status,
+			Name:             payload.Name,
+			Quota:            payload.Quota,
+			BenefitType:      payload.BenefitType,
+			ConcurrencyMode:  payload.ConcurrencyMode,
+			ConcurrencyValue: payload.ConcurrencyValue,
+			BenefitExpiresAt: payload.BenefitExpiresAt,
+			BatchNo:          payload.BatchNo,
+			CampaignName:     payload.CampaignName,
+			Channel:          payload.Channel,
+			SourcePlatform:   payload.SourcePlatform,
+			ExternalOrderNo:  payload.ExternalOrderNo,
+			Notes:            payload.Notes,
+			CreatedTime:      common.GetTimestamp(),
+			ExpiredTime:      payload.ExpiredTime,
 		}
 		if err := redemption.Insert(); err != nil {
 			common.ApiError(c, err)
@@ -293,6 +297,10 @@ func UpdateRedemption(c *gin.Context) {
 		redemption.Name = payload.Name
 		redemption.Status = payload.Status
 		redemption.Quota = payload.Quota
+		redemption.BenefitType = payload.BenefitType
+		redemption.ConcurrencyMode = payload.ConcurrencyMode
+		redemption.ConcurrencyValue = payload.ConcurrencyValue
+		redemption.BenefitExpiresAt = payload.BenefitExpiresAt
 		redemption.BatchNo = payload.BatchNo
 		redemption.CampaignName = payload.CampaignName
 		redemption.Channel = payload.Channel
