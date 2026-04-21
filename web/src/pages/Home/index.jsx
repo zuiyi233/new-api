@@ -17,109 +17,361 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useContext, useEffect, useState } from 'react';
-import {
-  Button,
-  Typography,
-  Input,
-  ScrollList,
-  ScrollItem,
-} from '@douyinfe/semi-ui';
-import { API, showError, copy, showSuccess } from '../../helpers';
+import React, {
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  lazy,
+  Suspense,
+} from 'react';
+import { API, showError } from '../../helpers';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
-import { API_ENDPOINTS } from '../../constants/common.constant';
-import { StatusContext } from '../../context/Status';
 import { useActualTheme } from '../../context/Theme';
 import { marked } from 'marked';
 import { useTranslation } from 'react-i18next';
-import {
-  IconGithubLogo,
-  IconPlay,
-  IconFile,
-  IconCopy,
-} from '@douyinfe/semi-icons';
 import { Link } from 'react-router-dom';
 import NoticeModal from '../../components/layout/NoticeModal';
-import {
-  Moonshot,
-  OpenAI,
-  XAI,
-  Zhipu,
-  Volcengine,
-  Cohere,
-  Claude,
-  Gemini,
-  Suno,
-  Minimax,
-  Wenxin,
-  Spark,
-  Qingyan,
-  DeepSeek,
-  Qwen,
-  Midjourney,
-  Grok,
-  AzureAI,
-  Hunyuan,
-  Xinference,
-} from '@lobehub/icons';
+import { StatusContext } from '../../context/Status';
 
-const { Text } = Typography;
+const Globe = lazy(() => import('./Globe'));
+const HOME_PAGE_CACHE_KEY = 'home_page_content';
+const easeOutStrong = [0.215, 0.61, 0.355, 1];
+const HOME_IFRAME_ALLOWLIST_KEYS = [
+  'home_page_iframe_allowlist',
+  'home_page_iframe_allow_list',
+  'home_page_content_iframe_allowlist',
+  'home_page_content_iframe_allow_list',
+];
+const BLOCKED_HTML_TAGS = new Set([
+  'script',
+  'iframe',
+  'object',
+  'embed',
+  'form',
+  'meta',
+  'link',
+  'style',
+  'base',
+]);
+const URL_ATTRS = new Set([
+  'href',
+  'src',
+  'xlink:href',
+  'formaction',
+  'action',
+]);
+const SAFE_URL_PREFIX = /^(https?:\/\/|mailto:|tel:|\/(?!\/)|#)/i;
+
+function useScrollReveal(threshold, delay = 0) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof window === 'undefined') {
+      setVisible(true);
+      return;
+    }
+
+    const timerIds = [];
+    let triggered = false;
+
+    const reveal = (revealDelay = delay) => {
+      if (triggered) {
+        return;
+      }
+      triggered = true;
+      const timerId = window.setTimeout(
+        () => setVisible(true),
+        Math.max(0, revealDelay),
+      );
+      timerIds.push(timerId);
+    };
+
+    if (!('IntersectionObserver' in window)) {
+      reveal(delay);
+      return () => {
+        timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      };
+    }
+
+    const fallbackTimer = window.setTimeout(() => reveal(delay), 1500);
+    timerIds.push(fallbackTimer);
+
+    const observer = new window.IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          reveal(delay);
+          observer.unobserve(el);
+        }
+      },
+      { threshold },
+    );
+
+    observer.observe(el);
+
+    if (
+      el.getBoundingClientRect().top <
+      window.innerHeight * (1 - threshold + 0.15)
+    ) {
+      reveal(delay + 100);
+      observer.unobserve(el);
+    }
+
+    return () => {
+      observer.disconnect();
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+    };
+  }, [threshold, delay]);
+
+  return [ref, visible];
+}
+
+function safeStorageGet(key) {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  try {
+    return localStorage.getItem(key) || '';
+  } catch {
+    return '';
+  }
+}
+
+function safeStorageSet(key, value) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // ignore storage set failure
+  }
+}
+
+function safeStorageRemove(key) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore storage remove failure
+  }
+}
+
+function getCachedHomePageContent() {
+  return safeStorageGet(HOME_PAGE_CACHE_KEY);
+}
+
+function getUrlOrigin(url) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '';
+  }
+}
+
+function parseHomeIframeAllowlist(raw) {
+  if (!raw) {
+    return [];
+  }
+  return String(raw)
+    .split(/[\n,;\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      try {
+        return new URL(item).origin;
+      } catch {
+        return '';
+      }
+    })
+    .filter(Boolean);
+}
+
+function getHomeIframeAllowedOrigins(statusState) {
+  const origins = new Set();
+  if (typeof window !== 'undefined') {
+    origins.add(window.location.origin);
+  }
+  const status = statusState?.status || {};
+  HOME_IFRAME_ALLOWLIST_KEYS.forEach((key) => {
+    parseHomeIframeAllowlist(status[key]).forEach((origin) => {
+      origins.add(origin);
+    });
+  });
+  return origins;
+}
+
+function isAllowedHomeIframeUrl(url, allowedOrigins) {
+  if (typeof url !== 'string' || !url.startsWith('https://')) {
+    return false;
+  }
+  const origin = getUrlOrigin(url);
+  return !!origin && allowedOrigins.has(origin);
+}
+
+function isSafeAttributeUrl(value) {
+  const normalized = String(value || '').trim();
+  if (!normalized) {
+    return false;
+  }
+  return SAFE_URL_PREFIX.test(normalized) && !/^javascript:/i.test(normalized);
+}
+
+function sanitizeHtmlContent(rawHtml) {
+  if (typeof rawHtml !== 'string') {
+    return '';
+  }
+  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
+    return rawHtml
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(rawHtml, 'text/html');
+  const sanitizeNode = (node) => {
+    const children = Array.from(node.children || []);
+    children.forEach((child) => {
+      const tag = child.tagName?.toLowerCase();
+      if (BLOCKED_HTML_TAGS.has(tag)) {
+        child.remove();
+        return;
+      }
+
+      Array.from(child.attributes).forEach((attr) => {
+        const name = attr.name.toLowerCase();
+        const value = attr.value;
+
+        if (name.startsWith('on')) {
+          child.removeAttribute(attr.name);
+          return;
+        }
+
+        if (URL_ATTRS.has(name) && !isSafeAttributeUrl(value)) {
+          child.removeAttribute(attr.name);
+          return;
+        }
+
+        if (name === 'target') {
+          child.setAttribute('rel', 'noopener noreferrer');
+        }
+      });
+
+      sanitizeNode(child);
+    });
+  };
+
+  sanitizeNode(doc.body);
+  return doc.body.innerHTML;
+}
+
+function normalizeHomePageContent(raw) {
+  if (typeof raw !== 'string') {
+    return '';
+  }
+  return raw.trim();
+}
 
 const Home = () => {
   const { t, i18n } = useTranslation();
   const [statusState] = useContext(StatusContext);
   const actualTheme = useActualTheme();
+  const homeIframeAllowedOrigins = useMemo(
+    () => getHomeIframeAllowedOrigins(statusState),
+    [statusState],
+  );
+  const [homePageContent, setHomePageContent] = useState(() =>
+    getCachedHomePageContent(),
+  );
   const [homePageContentLoaded, setHomePageContentLoaded] = useState(false);
-  const [homePageContent, setHomePageContent] = useState('');
+  const [homePageContentError, setHomePageContentError] = useState('');
   const [noticeVisible, setNoticeVisible] = useState(false);
   const isMobile = useIsMobile();
-  const isDemoSiteMode = statusState?.status?.demo_site_enabled || false;
-  const docsLink = statusState?.status?.docs_link || '';
-  const serverAddress =
-    statusState?.status?.server_address || `${window.location.origin}`;
-  const endpointItems = API_ENDPOINTS.map((e) => ({ value: e }));
-  const [endpointIndex, setEndpointIndex] = useState(0);
-  const isChinese = i18n.language.startsWith('zh');
+  const iframeRef = useRef(null);
+
+  const [textRef, textVisible] = useScrollReveal(0.35, 0);
+  const [globeRef, globeVisible] = useScrollReveal(0.2, 150);
 
   const displayHomePageContent = async () => {
-    setHomePageContent(localStorage.getItem('home_page_content') || '');
-    const res = await API.get('/api/home_page_content');
-    const { success, message, data } = res.data;
-    if (success) {
-      let content = data;
-      if (!data.startsWith('https://')) {
-        content = marked.parse(data);
-      }
-      setHomePageContent(content);
-      localStorage.setItem('home_page_content', content);
-
-      // 如果内容是 URL，则发送主题模式
-      if (data.startsWith('https://')) {
-        const iframe = document.querySelector('iframe');
-        if (iframe) {
-          iframe.onload = () => {
-            iframe.contentWindow.postMessage({ themeMode: actualTheme }, '*');
-            iframe.contentWindow.postMessage({ lang: i18n.language }, '*');
-          };
+    const cachedContent = getCachedHomePageContent();
+    if (cachedContent) {
+      if (cachedContent.startsWith('https://')) {
+        if (isAllowedHomeIframeUrl(cachedContent, homeIframeAllowedOrigins)) {
+          setHomePageContent(cachedContent);
+        } else {
+          safeStorageRemove(HOME_PAGE_CACHE_KEY);
         }
+      } else {
+        setHomePageContent(sanitizeHtmlContent(cachedContent));
       }
-    } else {
-      showError(message);
-      setHomePageContent('加载首页内容失败...');
     }
-    setHomePageContentLoaded(true);
-  };
 
-  const handleCopyBaseURL = async () => {
-    const ok = await copy(serverAddress);
-    if (ok) {
-      showSuccess(t('已复制到剪切板'));
+    try {
+      const res = await API.get('/api/home_page_content');
+      const { success, message, data } = res.data;
+
+      if (!success) {
+        const errorMessage = message || t('加载首页内容失败');
+        setHomePageContentError(errorMessage);
+        if (!cachedContent) {
+          showError(errorMessage);
+        }
+        return;
+      }
+
+      const sourceContent = normalizeHomePageContent(data);
+      if (!sourceContent) {
+        setHomePageContent('');
+        safeStorageRemove(HOME_PAGE_CACHE_KEY);
+        setHomePageContentError('');
+        return;
+      }
+
+      let renderedContent = '';
+      if (sourceContent.startsWith('https://')) {
+        if (!isAllowedHomeIframeUrl(sourceContent, homeIframeAllowedOrigins)) {
+          const errorMessage = t(
+            '首页外链地址未通过白名单校验，请联系管理员配置白名单后重试',
+          );
+          setHomePageContent('');
+          setHomePageContentError(errorMessage);
+          safeStorageRemove(HOME_PAGE_CACHE_KEY);
+          showError(errorMessage);
+          return;
+        }
+        renderedContent = sourceContent;
+      } else {
+        renderedContent = sanitizeHtmlContent(marked.parse(sourceContent));
+      }
+
+      setHomePageContent(renderedContent);
+      safeStorageSet(HOME_PAGE_CACHE_KEY, renderedContent);
+      setHomePageContentError('');
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        t('加载首页内容失败');
+      setHomePageContentError(errorMessage);
+      if (!cachedContent) {
+        showError(errorMessage);
+      }
+    } finally {
+      setHomePageContentLoaded(true);
     }
   };
 
   useEffect(() => {
     const checkNoticeAndShow = async () => {
-      const lastCloseDate = localStorage.getItem('notice_close_date');
+      const lastCloseDate = safeStorageGet('notice_close_date');
       const today = new Date().toDateString();
       if (lastCloseDate !== today) {
         try {
@@ -128,8 +380,8 @@ const Home = () => {
           if (success && data && data.trim() !== '') {
             setNoticeVisible(true);
           }
-        } catch (error) {
-          console.error('获取公告失败:', error);
+        } catch {
+          // ignore notice failure
         }
       }
     };
@@ -138,15 +390,44 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
-    displayHomePageContent().then();
-  }, []);
+    displayHomePageContent();
+  }, [homeIframeAllowedOrigins, t]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setEndpointIndex((prev) => (prev + 1) % endpointItems.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, [endpointItems.length]);
+    if (!homePageContent?.startsWith('https://')) {
+      return;
+    }
+    const iframe = iframeRef.current;
+    if (!iframe) {
+      return;
+    }
+    const targetOrigin = getUrlOrigin(homePageContent);
+    if (!targetOrigin || !homeIframeAllowedOrigins.has(targetOrigin)) {
+      return;
+    }
+
+    const syncContext = () => {
+      if (!iframe.contentWindow) {
+        return;
+      }
+      iframe.contentWindow.postMessage(
+        { themeMode: actualTheme },
+        targetOrigin,
+      );
+      iframe.contentWindow.postMessage({ lang: i18n.language }, targetOrigin);
+    };
+
+    iframe.addEventListener('load', syncContext);
+    syncContext();
+
+    return () => {
+      iframe.removeEventListener('load', syncContext);
+    };
+  }, [homePageContent, actualTheme, i18n.language, homeIframeAllowedOrigins]);
+
+  const hasHomePageContent =
+    typeof homePageContent === 'string' && homePageContent.trim() !== '';
+  const showHero = !hasHomePageContent;
 
   return (
     <div className='w-full overflow-x-hidden'>
@@ -155,181 +436,52 @@ const Home = () => {
         onClose={() => setNoticeVisible(false)}
         isMobile={isMobile}
       />
-      {homePageContentLoaded && homePageContent === '' ? (
-        <div className='w-full overflow-x-hidden'>
-          {/* Banner 部分 */}
-          <div className='w-full border-b border-semi-color-border min-h-[500px] md:min-h-[600px] lg:min-h-[700px] relative overflow-x-hidden'>
-            {/* 背景模糊晕染球 */}
-            <div className='blur-ball blur-ball-indigo' />
-            <div className='blur-ball blur-ball-teal' />
-            <div className='flex items-center justify-center h-full px-4 py-20 md:py-24 lg:py-32 mt-10'>
-              {/* 居中内容区 */}
-              <div className='flex flex-col items-center justify-center text-center max-w-4xl mx-auto'>
-                <div className='flex flex-col items-center justify-center mb-6 md:mb-8'>
-                  <h1
-                    className={`text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-semi-color-text-0 leading-tight ${isChinese ? 'tracking-wide md:tracking-wider' : ''}`}
-                  >
-                    <>
-                      {t('统一的')}
-                      <br />
-                      <span className='shine-text'>{t('大模型接口网关')}</span>
-                    </>
-                  </h1>
-                  <p className='text-base md:text-lg lg:text-xl text-semi-color-text-1 mt-4 md:mt-6 max-w-xl'>
-                    {t('更好的价格，更好的稳定性，只需要将模型基址替换为：')}
-                  </p>
-                  {/* BASE URL 与端点选择 */}
-                  <div className='flex flex-col md:flex-row items-center justify-center gap-4 w-full mt-4 md:mt-6 max-w-md'>
-                    <Input
-                      readonly
-                      value={serverAddress}
-                      className='flex-1 !rounded-full'
-                      size={isMobile ? 'default' : 'large'}
-                      suffix={
-                        <div className='flex items-center gap-2'>
-                          <ScrollList
-                            bodyHeight={32}
-                            style={{ border: 'unset', boxShadow: 'unset' }}
-                          >
-                            <ScrollItem
-                              mode='wheel'
-                              cycled={true}
-                              list={endpointItems}
-                              selectedIndex={endpointIndex}
-                              onSelect={({ index }) => setEndpointIndex(index)}
-                            />
-                          </ScrollList>
-                          <Button
-                            type='primary'
-                            onClick={handleCopyBaseURL}
-                            icon={<IconCopy />}
-                            className='!rounded-full'
-                          />
-                        </div>
-                      }
-                    />
-                  </div>
-                </div>
+      {showHero ? (
+        <div className='home-hero'>
+          <div className='home-hero-inner'>
+            <div
+              ref={textRef}
+              className='home-text-section'
+              style={{
+                opacity: textVisible ? 1 : 0,
+                transform: textVisible ? 'translateY(0)' : 'translateY(30px)',
+                transition: `opacity 1s cubic-bezier(${easeOutStrong.join(',')}), transform 1s cubic-bezier(${easeOutStrong.join(',')})`,
+              }}
+            >
+              <h1 className='home-title'>
+                {t('连接全球 AI 生态')}
+                <br />
+                <span className='home-title-gradient'>
+                  {t('一站式智能网关')}
+                </span>
+              </h1>
+              <p className='home-description'>
+                {t(
+                  '统一接入 40+ AI 模型提供商，智能路由、计费与限流，一个接口连接全球生态。',
+                )}
+              </p>
+              <Link to='/console' className='home-cta'>
+                {t('立即开始')}
+              </Link>
+              {homePageContentLoaded && homePageContentError ? (
+                <p className='home-error-hint'>{homePageContentError}</p>
+              ) : null}
+            </div>
 
-                {/* 操作按钮 */}
-                <div className='flex flex-row gap-4 justify-center items-center'>
-                  <Link to='/console'>
-                    <Button
-                      theme='solid'
-                      type='primary'
-                      size={isMobile ? 'default' : 'large'}
-                      className='!rounded-3xl px-8 py-2'
-                      icon={<IconPlay />}
-                    >
-                      {t('获取密钥')}
-                    </Button>
-                  </Link>
-                  {isDemoSiteMode && statusState?.status?.version ? (
-                    <Button
-                      size={isMobile ? 'default' : 'large'}
-                      className='flex items-center !rounded-3xl px-6 py-2'
-                      icon={<IconGithubLogo />}
-                      onClick={() =>
-                        window.open(
-                          'https://github.com/QuantumNous/new-api',
-                          '_blank',
-                        )
-                      }
-                    >
-                      {statusState.status.version}
-                    </Button>
-                  ) : (
-                    docsLink && (
-                      <Button
-                        size={isMobile ? 'default' : 'large'}
-                        className='flex items-center !rounded-3xl px-6 py-2'
-                        icon={<IconFile />}
-                        onClick={() => window.open(docsLink, '_blank')}
-                      >
-                        {t('文档')}
-                      </Button>
-                    )
-                  )}
-                </div>
-
-                {/* 框架兼容性图标 */}
-                <div className='mt-12 md:mt-16 lg:mt-20 w-full'>
-                  <div className='flex items-center mb-6 md:mb-8 justify-center'>
-                    <Text
-                      type='tertiary'
-                      className='text-lg md:text-xl lg:text-2xl font-light'
-                    >
-                      {t('支持众多的大模型供应商')}
-                    </Text>
-                  </div>
-                  <div className='flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-6 lg:gap-8 max-w-5xl mx-auto px-4'>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Moonshot size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <OpenAI size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <XAI size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Zhipu.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Volcengine.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Cohere.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Claude.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Gemini.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Suno size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Minimax.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Wenxin.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Spark.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Qingyan.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <DeepSeek.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Qwen.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Midjourney size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Grok size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <AzureAI.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Hunyuan.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Xinference.Color size={40} />
-                    </div>
-                    <div className='w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 flex items-center justify-center'>
-                      <Typography.Text className='!text-lg sm:!text-xl md:!text-2xl lg:!text-3xl font-bold'>
-                        30+
-                      </Typography.Text>
-                    </div>
-                  </div>
-                </div>
+            <div
+              ref={globeRef}
+              className='home-globe-section'
+              style={{
+                opacity: globeVisible ? 1 : 0,
+                transform: globeVisible ? 'scale(1)' : 'scale(0.5)',
+                transition: `opacity 1s cubic-bezier(${easeOutStrong.join(',')}) 0.15s, transform 1s cubic-bezier(${easeOutStrong.join(',')}) 0.15s`,
+              }}
+            >
+              <div className='home-globe-container'>
+                <Suspense fallback={<div className='home-globe-placeholder' />}>
+                  <Globe isActive={globeVisible && showHero} />
+                </Suspense>
+                <div className='home-globe-fade' />
               </div>
             </div>
           </div>
@@ -338,8 +490,13 @@ const Home = () => {
         <div className='overflow-x-hidden w-full'>
           {homePageContent.startsWith('https://') ? (
             <iframe
+              ref={iframeRef}
               src={homePageContent}
               className='w-full h-screen border-none'
+              title='home-content'
+              sandbox='allow-scripts allow-forms allow-popups allow-downloads'
+              referrerPolicy='no-referrer'
+              loading='lazy'
             />
           ) : (
             <div

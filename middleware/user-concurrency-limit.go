@@ -182,9 +182,7 @@ func UserConcurrencyLimit() gin.HandlerFunc {
 		c.Header("X-Concurrency-Inflight", strconv.FormatInt(inflight, 10))
 
 		stopHeartbeat := make(chan struct{})
-		if common.RedisEnabled {
-			go startConcurrencyHeartbeat(c.Request.Context(), stopHeartbeat, userID, requestID, ttlMs)
-		}
+		go startConcurrencyHeartbeat(c.Request.Context(), stopHeartbeat, userID, requestID, ttlMs)
 		defer close(stopHeartbeat)
 		defer releaseConcurrencySlot(c.Request.Context(), userID, requestID)
 
@@ -192,12 +190,32 @@ func UserConcurrencyLimit() gin.HandlerFunc {
 	}
 }
 
-func startConcurrencyHeartbeat(ctx context.Context, stop <-chan struct{}, userID int, requestID string, ttlMs int64) {
-	interval := ttlMs / 3
-	if interval < int64(5*time.Second/time.Millisecond) {
-		interval = int64(5 * time.Second / time.Millisecond)
+func calculateHeartbeatInterval(ttlMs int64) time.Duration {
+	if ttlMs <= 0 {
+		ttlMs = 600 * int64(time.Second/time.Millisecond)
 	}
-	ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
+
+	minIntervalMs := int64(100)
+	var intervalMs int64
+	if ttlMs <= 3*minIntervalMs {
+		intervalMs = ttlMs / 2
+	} else {
+		intervalMs = ttlMs / 3
+	}
+	if intervalMs < minIntervalMs {
+		intervalMs = minIntervalMs
+	}
+	if intervalMs >= ttlMs {
+		intervalMs = ttlMs - 1
+	}
+	if intervalMs <= 0 {
+		intervalMs = 1
+	}
+	return time.Duration(intervalMs) * time.Millisecond
+}
+
+func startConcurrencyHeartbeat(ctx context.Context, stop <-chan struct{}, userID int, requestID string, ttlMs int64) {
+	ticker := time.NewTicker(calculateHeartbeatInterval(ttlMs))
 	defer ticker.Stop()
 	for {
 		select {

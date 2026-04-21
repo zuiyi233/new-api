@@ -3515,6 +3515,27 @@
     "（当前仅支持易支付接口，默认使用上方服务器地址作为回调地址！）": "(Currently only supports Epay interface, the default callback address is the server address above!)",
     "，当前无生效订阅，将自动使用钱包": ", no active subscription. Wallet will be used automatically.",
     "，时间：": ",time:",
-    "，点击更新": ", click Update"
+    "，点击更新": ", click Update",
+    "连接全球 AI 生态": "Connect the global AI ecosystem",
+    "一站式智能网关": "One-stop intelligent gateway",
+    "统一接入 40+ AI 模型提供商，智能路由、计费与限流，一个接口连接全球生态。": "Unified access to 40+ AI model providers, with intelligent routing, billing, and rate limiting, one interface to connect the global ecosystem.",
+    "立即开始": "Get Started",
+    "用户并发限制": "User concurrency limit",
+    "启用用户并发限制": "Enable user concurrency limit",
+    "全局默认并发": "Global default concurrency",
+    "兑换码覆盖策略": "Redeem code override strategy",
+    "并发计数 TTL": "Concurrency count TTL",
+    "保存并发限制设置": "Save concurrency limit settings",
+    "并发权益值必须大于 0": "Concurrency entitlement value must be greater than 0",
+    "权益类型": "Entitlement type",
+    "并发模式": "Concurrency mode",
+    "并发权益值": "Concurrency entitlement value",
+    "并发覆盖设置成功": "Concurrency override saved successfully",
+    "并发覆盖已清除": "Concurrency override cleared",
+    "并发权益": "Concurrency entitlement",
+    "当前生效并发上限": "Current effective concurrency limit",
+    "覆盖为": "Override to",
+    "叠加": "Additive",
+    "首页外链地址未通过白名单校验，请联系管理员配置白名单后重试": "The home external link failed whitelist validation. Please contact the administrator to configure the whitelist and try again."
   }
 }

@@ -3471,6 +3471,27 @@
     "（当前仅支持易支付接口，默认使用上方服务器地址作为回调地址！）": "(Actuellement, seule l'interface Epay est prise en charge, l'adresse du serveur ci-dessus est utilisée par défaut comme adresse de rappel !)",
     "，当前无生效订阅，将自动使用钱包": ", aucun abonnement actif, le portefeuille sera utilisé automatiquement.",
     "，时间：": ", time:",
-    "，点击更新": ", cliquez sur Mettre à jour"
+    "，点击更新": ", cliquez sur Mettre à jour",
+    "连接全球 AI 生态": "Connectez l'écosystème IA mondial",
+    "一站式智能网关": "Passerelle IA intelligente tout-en-un",
+    "统一接入 40+ AI 模型提供商，智能路由、计费与限流，一个接口连接全球生态。": "Accédez à plus de 40 fournisseurs de modèles IA avec routage intelligent, facturation et limitation de débit via une seule interface.",
+    "立即开始": "Commencer",
+    "用户并发限制": "Limite de concurrence utilisateur",
+    "启用用户并发限制": "Activer la limite de concurrence utilisateur",
+    "全局默认并发": "Concurrence globale par défaut",
+    "兑换码覆盖策略": "Stratégie de priorité des codes d'échange",
+    "并发计数 TTL": "TTL du compteur de concurrence",
+    "保存并发限制设置": "Enregistrer les paramètres de limite de concurrence",
+    "并发权益值必须大于 0": "La valeur de l'avantage de concurrence doit être supérieure à 0",
+    "权益类型": "Type d'avantage",
+    "并发模式": "Mode de concurrence",
+    "并发权益值": "Valeur de l'avantage de concurrence",
+    "并发覆盖设置成功": "Remplacement de concurrence enregistré",
+    "并发覆盖已清除": "Remplacement de concurrence supprimé",
+    "并发权益": "Avantage de concurrence",
+    "当前生效并发上限": "Limite de concurrence effective actuelle",
+    "覆盖为": "Remplacer par",
+    "叠加": "Cumul",
+    "首页外链地址未通过白名单校验，请联系管理员配置白名单后重试": "Le lien externe de la page d'accueil n'a pas passé la validation de liste blanche. Veuillez contacter l'administrateur pour configurer la liste blanche puis réessayer."
   }
 }

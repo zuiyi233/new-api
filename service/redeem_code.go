@@ -19,6 +19,12 @@ const (
 	RedeemCodeActionCreateSubscription  = "create_subscription"
 )
 
+var (
+	findSubscriptionCodeByCodeFn = model.FindSubscriptionCodeByCode
+	redeemWithDetailFn           = model.RedeemWithDetail
+	getUserConcurrencySnapshotFn = GetUserConcurrencySnapshot
+)
+
 type RedeemCodeSubscriptionResult struct {
 	SubscriptionId int    `json:"subscription_id"`
 	PlanId         int    `json:"plan_id"`
@@ -58,7 +64,7 @@ func RedeemUnifiedCode(userId int, rawCode string, clientIP string) (*RedeemCode
 		return nil, errors.New("无效的用户 ID")
 	}
 
-	subscriptionCode, err := model.FindSubscriptionCodeByCode(code)
+	subscriptionCode, err := findSubscriptionCodeByCodeFn(code)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
@@ -66,7 +72,7 @@ func RedeemUnifiedCode(userId int, rawCode string, clientIP string) (*RedeemCode
 		return redeemSubscriptionCode(userId, code, clientIP)
 	}
 
-	quota, redemption, err := model.RedeemWithDetail(code, userId)
+	quota, redemption, err := redeemWithDetailFn(code, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -81,11 +87,8 @@ func RedeemUnifiedCode(userId int, rawCode string, clientIP string) (*RedeemCode
 		Quota:    quota,
 	}
 
+	concurrencySnapshotWarning := ""
 	if includesConcurrency {
-		snapshot, snapErr := GetUserConcurrencySnapshot(userId)
-		if snapErr != nil {
-			return nil, snapErr
-		}
 		mode := strings.TrimSpace(redemption.ConcurrencyMode)
 		if mode == "" {
 			if benefitType == model.RedemptionBenefitTypeConcurrencyOverride {
@@ -94,16 +97,26 @@ func RedeemUnifiedCode(userId int, rawCode string, clientIP string) (*RedeemCode
 				mode = model.ConcurrencyGrantModeStack
 			}
 		}
-		result.Concurrency = &RedeemCodeConcurrencyResult{
+		concurrency := &RedeemCodeConcurrencyResult{
 			Mode:              mode,
 			Value:             redemption.ConcurrencyValue,
-			EffectiveLimit:    snapshot.EffectiveLimit,
-			GlobalDefault:     snapshot.GlobalDefault,
-			UserOverride:      snapshot.UserOverride,
-			CodeStackTotal:    snapshot.CodeStackTotal,
-			CodeOverrideValue: snapshot.CodeOverrideValue,
+			GlobalDefault:     0,
+			EffectiveLimit:    0,
+			CodeStackTotal:    0,
+			CodeOverrideValue: 0,
 			ExpiresAt:         redemption.BenefitExpiresAt,
 		}
+		snapshot, snapErr := getUserConcurrencySnapshotFn(userId)
+		if snapErr == nil && snapshot != nil {
+			concurrency.EffectiveLimit = snapshot.EffectiveLimit
+			concurrency.GlobalDefault = snapshot.GlobalDefault
+			concurrency.UserOverride = snapshot.UserOverride
+			concurrency.CodeStackTotal = snapshot.CodeStackTotal
+			concurrency.CodeOverrideValue = snapshot.CodeOverrideValue
+		} else if snapErr != nil {
+			concurrencySnapshotWarning = "并发快照暂不可用，请稍后刷新并发上限，但并发权益已生效"
+		}
+		result.Concurrency = concurrency
 	}
 
 	switch {
@@ -117,6 +130,9 @@ func RedeemUnifiedCode(userId int, rawCode string, clientIP string) (*RedeemCode
 	default:
 		result.Action = RedeemCodeActionQuotaTopUp
 		result.Message = "兑换成功，额度已到账"
+	}
+	if concurrencySnapshotWarning != "" {
+		result.Message = fmt.Sprintf("%s；%s", result.Message, concurrencySnapshotWarning)
 	}
 
 	return result, nil
