@@ -40,6 +40,47 @@ import { useLocation } from 'react-router-dom';
 import { normalizeLanguage } from '../../i18n/language';
 const { Sider, Content, Header } = Layout;
 
+const BRAND_FAVICON_PATH = '/miaowu-favicon.svg';
+const LEGACY_LOGO_PATH = '/logo.png';
+const LEGACY_FAVICON_PATH = '/favicon.ico';
+
+const resolveFaviconUrl = (logoUrl) => {
+  const normalizedLogoUrl =
+    typeof logoUrl === 'string' ? logoUrl.trim() : logoUrl;
+
+  if (
+    !normalizedLogoUrl ||
+    normalizedLogoUrl === LEGACY_LOGO_PATH ||
+    normalizedLogoUrl === LEGACY_FAVICON_PATH
+  ) {
+    return BRAND_FAVICON_PATH;
+  }
+
+  return normalizedLogoUrl;
+};
+
+const applyFavicon = (logoUrl) => {
+  const faviconUrl = resolveFaviconUrl(logoUrl);
+
+  let iconLinkElement = document.querySelector("link[rel~='icon']");
+  if (!iconLinkElement) {
+    iconLinkElement = document.createElement('link');
+    iconLinkElement.rel = 'icon';
+    document.head.appendChild(iconLinkElement);
+  }
+  iconLinkElement.href = faviconUrl;
+
+  let shortcutIconLinkElement = document.querySelector(
+    "link[rel='shortcut icon']",
+  );
+  if (!shortcutIconLinkElement) {
+    shortcutIconLinkElement = document.createElement('link');
+    shortcutIconLinkElement.rel = 'shortcut icon';
+    document.head.appendChild(shortcutIconLinkElement);
+  }
+  shortcutIconLinkElement.href = faviconUrl;
+};
+
 const PageLayout = () => {
   const [userState, userDispatch] = useContext(UserContext);
   const [, statusDispatch] = useContext(StatusContext);
@@ -93,6 +134,10 @@ const PageLayout = () => {
       if (success) {
         statusDispatch({ type: 'set', payload: data });
         setStatusData(data);
+        if (data?.system_name) {
+          document.title = data.system_name;
+        }
+        applyFavicon(data?.logo);
       } else {
         showError('Unable to connect to server');
       }
@@ -108,13 +153,7 @@ const PageLayout = () => {
     if (systemName) {
       document.title = systemName;
     }
-    let logo = getLogo();
-    if (logo) {
-      let linkElement = document.querySelector("link[rel~='icon']");
-      if (linkElement) {
-        linkElement.href = logo;
-      }
-    }
+    applyFavicon(getLogo());
   }, []);
 
   useEffect(() => {
