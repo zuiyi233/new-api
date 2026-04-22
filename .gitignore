@@ -33,3 +33,4 @@ token_estimator_test.go
 .ace-tool/
 .trellis/
 .agents/
+.playwright-mcp

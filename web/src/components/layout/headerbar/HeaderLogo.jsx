@@ -21,14 +21,14 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Typography, Tag } from '@douyinfe/semi-ui';
 import SkeletonWrapper from '../components/SkeletonWrapper';
+import AnimatedCatLogo from './AnimatedCatLogo';
+
+const CAT_BRAND_NAME = '喵呜 API';
 
 const HeaderLogo = ({
   isMobile,
   isConsoleRoute,
-  logo,
-  logoLoaded,
   isLoading,
-  systemName,
   isSelfUseMode,
   isDemoSiteMode,
   t,
@@ -38,14 +38,9 @@ const HeaderLogo = ({
   }
 
   return (
-    <Link to='/' className='group flex items-center gap-2'>
-      <div className='relative w-8 h-8 md:w-8 md:h-8'>
-        <SkeletonWrapper loading={isLoading || !logoLoaded} type='image' />
-        <img
-          src={logo}
-          alt='logo'
-          className={`absolute inset-0 w-full h-full transition-all duration-200 group-hover:scale-110 rounded-full ${!isLoading && logoLoaded ? 'opacity-100' : 'opacity-0'}`}
-        />
+    <Link to='/' className='group flex items-center gap-2.5'>
+      <div className='relative h-9 w-9 md:h-9 md:w-9 rounded-full overflow-hidden shadow-sm ring-1 ring-white/10 transition-all duration-200 group-hover:scale-110 group-hover:ring-semi-color-primary/40'>
+        <AnimatedCatLogo />
       </div>
       <div className='hidden md:flex items-center gap-2'>
         <div className='flex items-center gap-2'>
@@ -59,7 +54,7 @@ const HeaderLogo = ({
               heading={4}
               className='!text-lg !font-semibold !mb-0'
             >
-              {systemName}
+              {CAT_BRAND_NAME}
             </Typography.Title>
           </SkeletonWrapper>
           {(isSelfUseMode || isDemoSiteMode) && !isLoading && (

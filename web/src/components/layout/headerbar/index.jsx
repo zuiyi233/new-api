@@ -33,11 +33,8 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
     statusState,
     isMobile,
     collapsed,
-    logoLoaded,
     currentLang,
     isLoading,
-    systemName,
-    logo,
     isNewYear,
     isSelfUseMode,
     docsLink,
@@ -75,8 +72,8 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
       />
 
       <div className='w-full px-2'>
-        <div className='flex items-center justify-between h-16'>
-          <div className='flex items-center'>
+        <div className='flex items-center h-16'>
+          <div className='flex min-w-0 items-center md:flex-1'>
             <MobileMenuButton
               isConsoleRoute={isConsoleRoute}
               isMobile={isMobile}
@@ -89,10 +86,7 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
             <HeaderLogo
               isMobile={isMobile}
               isConsoleRoute={isConsoleRoute}
-              logo={logo}
-              logoLoaded={logoLoaded}
               isLoading={isLoading}
-              systemName={systemName}
               isSelfUseMode={isSelfUseMode}
               isDemoSiteMode={isDemoSiteMode}
               t={t}
@@ -107,22 +101,24 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
             pricingRequireAuth={pricingRequireAuth}
           />
 
-          <ActionButtons
-            isNewYear={isNewYear}
-            unreadCount={unreadCount}
-            onNoticeOpen={handleNoticeOpen}
-            theme={theme}
-            onThemeToggle={handleThemeToggle}
-            currentLang={currentLang}
-            onLanguageChange={handleLanguageChange}
-            userState={userState}
-            isLoading={isLoading}
-            isMobile={isMobile}
-            isSelfUseMode={isSelfUseMode}
-            logout={logout}
-            navigate={navigate}
-            t={t}
-          />
+          <div className='flex min-w-0 items-center md:flex-1 md:justify-end'>
+            <ActionButtons
+              isNewYear={isNewYear}
+              unreadCount={unreadCount}
+              onNoticeOpen={handleNoticeOpen}
+              theme={theme}
+              onThemeToggle={handleThemeToggle}
+              currentLang={currentLang}
+              onLanguageChange={handleLanguageChange}
+              userState={userState}
+              isLoading={isLoading}
+              isMobile={isMobile}
+              isSelfUseMode={isSelfUseMode}
+              logout={logout}
+              navigate={navigate}
+              t={t}
+            />
+          </div>
         </div>
       </div>
     </header>
