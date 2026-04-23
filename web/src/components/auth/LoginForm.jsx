@@ -142,6 +142,30 @@ const LoginForm = () => {
       status.telegram_oauth ||
       hasCustomOAuthProviders,
   );
+  const getSafeContinuePath = (fallbackPath = '/console') => {
+    const continuePath = searchParams.get('continue');
+    if (!continuePath) {
+      return fallbackPath;
+    }
+    const isAbsoluteURL = /^https?:\/\//i.test(continuePath);
+    const isRelativePath = continuePath.startsWith('/');
+    if (!isAbsoluteURL && !isRelativePath) {
+      return fallbackPath;
+    }
+    try {
+      const continueURL = new URL(continuePath, window.location.origin);
+      if (continueURL.origin !== window.location.origin) {
+        return fallbackPath;
+      }
+      const redirectPath = `${continueURL.pathname}${continueURL.search}${continueURL.hash}`;
+      if (!redirectPath.startsWith('/')) {
+        return fallbackPath;
+      }
+      return redirectPath;
+    } catch {
+      return fallbackPath;
+    }
+  };
 
   useEffect(() => {
     if (status?.turnstile_check) {
@@ -198,7 +222,7 @@ const LoginForm = () => {
         localStorage.setItem('user', JSON.stringify(data));
         setUserData(data);
         updateAPI();
-        navigate('/');
+        navigate(getSafeContinuePath());
         showSuccess('登录成功！');
         setShowWeChatLoginModal(false);
       } else {
@@ -255,7 +279,7 @@ const LoginForm = () => {
               centered: true,
             });
           }
-          navigate('/console');
+          navigate(getSafeContinuePath());
         } else {
           showError(message);
         }
@@ -456,7 +480,7 @@ const LoginForm = () => {
         setUserData(finish.data);
         updateAPI();
         showSuccess('登录成功！');
-        navigate('/console');
+        navigate(getSafeContinuePath());
       } else {
         showError(finish.message || 'Passkey 登录失败，请重试');
       }
@@ -491,7 +515,7 @@ const LoginForm = () => {
     setUserData(data);
     updateAPI();
     showSuccess('登录成功！');
-    navigate('/console');
+    navigate(getSafeContinuePath());
   };
 
   // 返回登录页面
