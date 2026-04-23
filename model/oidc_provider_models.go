@@ -33,6 +33,8 @@ const (
 	oidcDefaultAuthorizationCodePrefix = "oidc_code_"
 	oidcDefaultAccessTokenPrefix       = "oidc_at_"
 	oidcDefaultRefreshTokenPrefix      = "oidc_rt_"
+	oidcClientTypePublic               = "public"
+	oidcClientTypeConfidential         = "confidential"
 )
 
 var oidcScopePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9:._-]*$`)
@@ -46,6 +48,7 @@ type OIDCClient struct {
 	Name             string    `json:"name" gorm:"type:varchar(128);not null"`
 	RedirectURIs     string    `json:"redirect_uris" gorm:"type:text;not null"` // JSON array string
 	Scopes           string    `json:"scopes" gorm:"type:text;not null"`        // JSON array string
+	ClientType       string    `json:"client_type" gorm:"type:varchar(32);not null;default:'confidential';index"`
 	Enabled          bool      `json:"enabled" gorm:"default:true;index"`
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
@@ -116,6 +119,7 @@ type CreateOIDCClientInput struct {
 	Name         string   `json:"name"`
 	RedirectURIs []string `json:"redirect_uris"`
 	Scopes       []string `json:"scopes"`
+	ClientType   string   `json:"client_type"`
 	Enabled      *bool    `json:"enabled"`
 }
 
@@ -216,6 +220,15 @@ func normalizeOIDCStringArray(items []string) []string {
 		res = append(res, clean)
 	}
 	return res
+}
+
+func NormalizeOIDCClientType(clientType string) string {
+	switch strings.ToLower(strings.TrimSpace(clientType)) {
+	case oidcClientTypePublic:
+		return oidcClientTypePublic
+	default:
+		return oidcClientTypeConfidential
+	}
 }
 
 func SplitOIDCScopeString(scope string) []string {
@@ -364,6 +377,7 @@ func CreateOIDCClient(input *CreateOIDCClientInput) (*OIDCClient, string, error)
 	if input.Enabled != nil {
 		enabled = *input.Enabled
 	}
+	clientType := NormalizeOIDCClientType(input.ClientType)
 
 	client := &OIDCClient{
 		ClientID:         clientID,
@@ -371,6 +385,7 @@ func CreateOIDCClient(input *CreateOIDCClientInput) (*OIDCClient, string, error)
 		Name:             name,
 		RedirectURIs:     redirectURIs,
 		Scopes:           scopes,
+		ClientType:       clientType,
 		Enabled:          enabled,
 	}
 	if err := DB.Create(client).Error; err != nil {
@@ -442,6 +457,7 @@ func UpdateOIDCClient(client *OIDCClient) error {
 		"name":          cleanName,
 		"redirect_uris": client.RedirectURIs,
 		"scopes":        client.Scopes,
+		"client_type":   NormalizeOIDCClientType(client.ClientType),
 		"enabled":       client.Enabled,
 	}
 	if cleanClientID := strings.TrimSpace(client.ClientID); cleanClientID != "" {

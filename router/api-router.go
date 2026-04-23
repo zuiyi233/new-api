@@ -198,6 +198,16 @@ func SetApiRouter(router *gin.Engine) {
 			customOAuthRoute.PUT("/:id", controller.UpdateCustomOAuthProvider)
 			customOAuthRoute.DELETE("/:id", controller.DeleteCustomOAuthProvider)
 		}
+		oidcClientRoute := apiRouter.Group("/oidc/clients")
+		oidcClientRoute.Use(middleware.OIDCAdminTokenAuth())
+		{
+			oidcClientRoute.GET("/", controller.AdminListOIDCClients)
+			oidcClientRoute.POST("/", controller.AdminCreateOIDCClient)
+			oidcClientRoute.PUT("/:client_id", controller.AdminUpdateOIDCClient)
+			oidcClientRoute.POST("/:client_id/disable", controller.AdminDisableOIDCClient)
+			oidcClientRoute.POST("/:client_id/enable", controller.AdminEnableOIDCClient)
+			oidcClientRoute.DELETE("/:client_id", controller.AdminDeleteOIDCClient)
+		}
 		performanceRoute := apiRouter.Group("/performance")
 		performanceRoute.Use(middleware.RootAuth())
 		{
