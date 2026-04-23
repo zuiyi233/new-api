@@ -208,6 +208,13 @@ func SetApiRouter(router *gin.Engine) {
 			oidcClientRoute.POST("/:client_id/enable", controller.AdminEnableOIDCClient)
 			oidcClientRoute.DELETE("/:client_id", controller.AdminDeleteOIDCClient)
 		}
+		oidcSigningKeyRoute := apiRouter.Group("/oidc/signing-keys")
+		oidcSigningKeyRoute.Use(middleware.OIDCAdminTokenAuth())
+		{
+			oidcSigningKeyRoute.GET("/", controller.AdminListOIDCSigningKeys)
+			oidcSigningKeyRoute.POST("/rotate", controller.AdminRotateOIDCSigningKey)
+			oidcSigningKeyRoute.POST("/:kid/activate", controller.AdminActivateOIDCSigningKey)
+		}
 		performanceRoute := apiRouter.Group("/performance")
 		performanceRoute.Use(middleware.RootAuth())
 		{

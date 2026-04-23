@@ -59,6 +59,15 @@ type oidcClientUpdateRequest struct {
 	Enabled      *bool    `json:"enabled"`
 }
 
+type oidcSigningKeyResponse struct {
+	Kid       string `json:"kid"`
+	Alg       string `json:"alg"`
+	PublicJWK string `json:"public_jwk"`
+	Active    bool   `json:"active"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
 func GetOIDCDiscoveryConfiguration(c *gin.Context) {
 	if err := model.EnsureDefaultOIDCSigningKey(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -74,6 +83,8 @@ func GetOIDCDiscoveryConfiguration(c *gin.Context) {
 		"authorization_endpoint":                issuer + "/oauth/authorize",
 		"token_endpoint":                        issuer + "/oauth/token",
 		"userinfo_endpoint":                     issuer + "/oauth/userinfo",
+		"revocation_endpoint":                   issuer + "/oauth/revoke",
+		"introspection_endpoint":                issuer + "/oauth/introspect",
 		"jwks_uri":                              issuer + "/.well-known/jwks.json",
 		"scopes_supported":                      []string{"openid", "profile", "email", "offline_access"},
 		"response_types_supported":              []string{"code"},
@@ -342,6 +353,100 @@ func OIDCRevokeToken(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func OIDCIntrospect(c *gin.Context) {
+	if err := c.Request.ParseForm(); err != nil {
+		writeOAuthError(c, http.StatusBadRequest, "invalid_request", "failed to parse form")
+		return
+	}
+
+	token := strings.TrimSpace(c.PostForm("token"))
+	if token == "" {
+		writeOAuthError(c, http.StatusBadRequest, "invalid_request", "token is required")
+		return
+	}
+	tokenTypeHint := strings.ToLower(strings.TrimSpace(c.PostForm("token_type_hint")))
+
+	clientID, clientSecret, authMethod, err := parseOAuthClientCredentials(c)
+	if err != nil {
+		writeOAuthError(c, http.StatusUnauthorized, "invalid_client", err.Error())
+		return
+	}
+
+	client, err := model.GetOIDCClientByClientID(clientID)
+	if err != nil {
+		writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "unknown client")
+		return
+	}
+	if !client.Enabled {
+		writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "client is disabled")
+		return
+	}
+	if strings.EqualFold(client.ClientType, oidcClientTypePublic) {
+		if authMethod != "none" && clientSecret != "" {
+			writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "public client must not use client_secret")
+			return
+		}
+	} else {
+		if clientSecret == "" {
+			writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "client authentication required")
+			return
+		}
+		if _, err = model.ValidateOIDCClientSecret(clientID, clientSecret); err != nil {
+			writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "invalid client credentials")
+			return
+		}
+	}
+
+	oauthToken := (*model.OIDCToken)(nil)
+	resolvedTokenType := "Bearer"
+
+	switch tokenTypeHint {
+	case "refresh_token":
+		if refreshToken, tokenErr := model.GetOIDCTokenByRefreshToken(token); tokenErr == nil {
+			oauthToken = refreshToken
+			resolvedTokenType = "refresh_token"
+		}
+	case "", "access_token":
+		if accessToken, tokenErr := model.GetOIDCTokenByAccessToken(token); tokenErr == nil {
+			oauthToken = accessToken
+			resolvedTokenType = "Bearer"
+		}
+	default:
+		if accessToken, tokenErr := model.GetOIDCTokenByAccessToken(token); tokenErr == nil {
+			oauthToken = accessToken
+			resolvedTokenType = "Bearer"
+		} else if refreshToken, tokenErr := model.GetOIDCTokenByRefreshToken(token); tokenErr == nil {
+			oauthToken = refreshToken
+			resolvedTokenType = "refresh_token"
+		}
+	}
+
+	if oauthToken == nil {
+		c.JSON(http.StatusOK, gin.H{"active": false})
+		return
+	}
+
+	if oauthToken.ClientID != clientID {
+		c.JSON(http.StatusOK, gin.H{"active": false})
+		return
+	}
+
+	exp := oauthToken.AccessTokenExpiresAt.Unix()
+	if resolvedTokenType == "refresh_token" && oauthToken.RefreshTokenExpiresAt != nil {
+		exp = oauthToken.RefreshTokenExpiresAt.Unix()
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"active":     true,
+		"client_id":  oauthToken.ClientID,
+		"sub":        oauthToken.Subject,
+		"scope":      oauthToken.Scope,
+		"exp":        exp,
+		"iat":        oauthToken.CreatedAt.Unix(),
+		"token_type": resolvedTokenType,
+	})
+}
+
 func AdminListOIDCClients(c *gin.Context) {
 	clients, err := model.ListOIDCClients()
 	if err != nil {
@@ -485,6 +590,47 @@ func AdminDeleteOIDCClient(c *gin.Context) {
 		return
 	}
 	common.ApiSuccess(c, gin.H{"client_id": clientID, "deleted": true})
+}
+
+func AdminListOIDCSigningKeys(c *gin.Context) {
+	keys, err := model.ListOIDCSigningKeys()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	resp := make([]*oidcSigningKeyResponse, 0, len(keys))
+	for _, key := range keys {
+		resp = append(resp, toOIDCSigningKeyResponse(key))
+	}
+	common.ApiSuccess(c, resp)
+}
+
+func AdminRotateOIDCSigningKey(c *gin.Context) {
+	key, err := model.RotateOIDCSigningKey()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, toOIDCSigningKeyResponse(key))
+}
+
+func AdminActivateOIDCSigningKey(c *gin.Context) {
+	kid := strings.TrimSpace(c.Param("kid"))
+	if kid == "" {
+		common.ApiErrorMsg(c, "kid is required")
+		return
+	}
+
+	key, err := model.ActivateOIDCSigningKey(kid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			common.ApiErrorMsg(c, "signing key not found")
+			return
+		}
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, toOIDCSigningKeyResponse(key))
 }
 
 func oidcTokenByAuthorizationCode(c *gin.Context, client *model.OIDCClient) {
@@ -812,6 +958,20 @@ func toOIDCClientResponse(client *model.OIDCClient) *oidcClientResponse {
 		Enabled:      client.Enabled,
 		CreatedAt:    client.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    client.UpdatedAt.Format(time.RFC3339),
+	}
+}
+
+func toOIDCSigningKeyResponse(key *model.OIDCSigningKey) *oidcSigningKeyResponse {
+	if key == nil {
+		return nil
+	}
+	return &oidcSigningKeyResponse{
+		Kid:       key.Kid,
+		Alg:       key.Alg,
+		PublicJWK: key.PublicJWK,
+		Active:    key.Active,
+		CreatedAt: key.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: key.UpdatedAt.Format(time.RFC3339),
 	}
 }
 

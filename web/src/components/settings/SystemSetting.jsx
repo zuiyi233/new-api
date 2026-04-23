@@ -43,6 +43,7 @@ import {
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import CustomOAuthSetting from './CustomOAuthSetting';
+import OIDCSigningKeySetting from './OIDCSigningKeySetting';
 
 const SystemSetting = () => {
   const { t } = useTranslation();
@@ -1428,6 +1429,7 @@ const SystemSetting = () => {
                   </Button>
                 </Form.Section>
               </Card>
+              <OIDCSigningKeySetting />
 
               <Card>
                 <Form.Section text={t('配置 GitHub OAuth App')}>

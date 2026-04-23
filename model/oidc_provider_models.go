@@ -854,6 +854,73 @@ func GetOIDCJWKS() (map[string]any, error) {
 	return map[string]any{"keys": jwks}, nil
 }
 
+func ListOIDCSigningKeys() ([]*OIDCSigningKey, error) {
+	if err := EnsureDefaultOIDCSigningKey(); err != nil {
+		return nil, err
+	}
+
+	var keys []*OIDCSigningKey
+	if err := DB.Order("id desc").Find(&keys).Error; err != nil {
+		return nil, err
+	}
+	return keys, nil
+}
+
+func RotateOIDCSigningKey() (*OIDCSigningKey, error) {
+	privatePEM, publicJWK, kid, err := generateOIDCSigningMaterial()
+	if err != nil {
+		return nil, err
+	}
+
+	created := &OIDCSigningKey{
+		Kid:        kid,
+		Alg:        "RS256",
+		PrivateKey: privatePEM,
+		PublicJWK:  publicJWK,
+		Active:     true,
+	}
+
+	if err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&OIDCSigningKey{}).Where("active = ?", true).Update("active", false).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(created).Error; err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return created, nil
+}
+
+func ActivateOIDCSigningKey(kid string) (*OIDCSigningKey, error) {
+	cleanKid := strings.TrimSpace(kid)
+	if cleanKid == "" {
+		return nil, errors.New("kid is required")
+	}
+
+	var target OIDCSigningKey
+	if err := DB.Where("kid = ?", cleanKid).First(&target).Error; err != nil {
+		return nil, err
+	}
+
+	if err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&OIDCSigningKey{}).Where("active = ?", true).Update("active", false).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&OIDCSigningKey{}).Where("id = ?", target.Id).Update("active", true).Error; err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	target.Active = true
+	return &target, nil
+}
+
 func ensureActiveSigningKey() (*OIDCSigningKey, error) {
 	var key OIDCSigningKey
 	err := DB.Where("active = ?", true).Order("id desc").First(&key).Error

@@ -18,5 +18,6 @@ func SetOIDCProviderRouter(router *gin.Engine) {
 		oauthRoute.POST("/token", middleware.CriticalRateLimit(), controller.OIDCToken)
 		oauthRoute.GET("/userinfo", middleware.CriticalRateLimit(), controller.OIDCUserInfo)
 		oauthRoute.POST("/revoke", middleware.CriticalRateLimit(), controller.OIDCRevokeToken)
+		oauthRoute.POST("/introspect", middleware.CriticalRateLimit(), controller.OIDCIntrospect)
 	}
 }
