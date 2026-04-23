@@ -18,9 +18,31 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 export function setStatusData(data) {
+  const BRAND_LOGO_PATH = '/miaowu-favicon.svg';
+  const normalizeLogo = (rawLogo) => {
+    if (typeof rawLogo !== 'string') return BRAND_LOGO_PATH;
+    const normalized = rawLogo.trim();
+    if (!normalized) return BRAND_LOGO_PATH;
+
+    const lowered = normalized.toLowerCase();
+    if (
+      lowered === 'null' ||
+      lowered === 'undefined' ||
+      lowered === 'false' ||
+      lowered === '/logo.png' ||
+      lowered === 'logo.png' ||
+      lowered === '/favicon.ico' ||
+      lowered === 'favicon.ico'
+    ) {
+      return BRAND_LOGO_PATH;
+    }
+
+    return normalized;
+  };
+
   localStorage.setItem('status', JSON.stringify(data));
   localStorage.setItem('system_name', data.system_name);
-  localStorage.setItem('logo', data.logo);
+  localStorage.setItem('logo', normalizeLogo(data.logo));
   localStorage.setItem('footer_html', data.footer_html);
   localStorage.setItem('quota_per_unit', data.quota_per_unit);
   // 兼容：保留旧字段，同时写入新的额度展示类型

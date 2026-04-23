@@ -53,9 +53,29 @@ export function getSystemName() {
 }
 
 export function getLogo() {
+  const BRAND_LOGO_PATH = '/miaowu-favicon.svg';
+  const legacyLogoPaths = new Set([
+    '/logo.png',
+    'logo.png',
+    '/favicon.ico',
+    'favicon.ico',
+    'null',
+    'undefined',
+    'false',
+  ]);
+
   let logo = localStorage.getItem('logo');
-  if (!logo) return '/logo.png';
-  return logo;
+  if (!logo) return BRAND_LOGO_PATH;
+
+  const normalizedLogo = String(logo).trim();
+  if (!normalizedLogo) return BRAND_LOGO_PATH;
+
+  const lowerValue = normalizedLogo.toLowerCase();
+  if (legacyLogoPaths.has(lowerValue)) {
+    return BRAND_LOGO_PATH;
+  }
+
+  return normalizedLogo;
 }
 
 export function getUserIdFromLocalStorage() {

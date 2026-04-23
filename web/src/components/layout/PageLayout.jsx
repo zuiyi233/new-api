@@ -41,26 +41,74 @@ import { normalizeLanguage } from '../../i18n/language';
 const { Sider, Content, Header } = Layout;
 
 const BRAND_FAVICON_PATH = '/miaowu-favicon.svg';
+const BRAND_FAVICON_VERSION = '20260423';
+const BRAND_FAVICON_URL = `${BRAND_FAVICON_PATH}?v=${BRAND_FAVICON_VERSION}`;
 const LEGACY_LOGO_PATH = '/logo.png';
 const LEGACY_FAVICON_PATH = '/favicon.ico';
+const LEGACY_FAVICON_PATHS = new Set([
+  '/logo.png',
+  'logo.png',
+  '/favicon.ico',
+  'favicon.ico',
+]);
+const SAFE_DATA_IMAGE_PREFIX = /^data:image\//i;
+const SAFE_HTTP_PREFIX = /^https?:\/\//i;
+const SAFE_ABSOLUTE_PATH = /^\/(?!\/)/;
+const SAFE_RELATIVE_PATH = /^\.{0,2}\/.+/;
 
-const resolveFaviconUrl = (logoUrl) => {
+const extractPathname = (urlLike) => {
+  try {
+    return new URL(urlLike, window.location.origin).pathname.toLowerCase();
+  } catch {
+    return String(urlLike || '')
+      .split('?')[0]
+      .split('#')[0]
+      .toLowerCase();
+  }
+};
+
+const isSafeFaviconUrl = (urlLike) => {
+  if (!urlLike) return false;
+  if (SAFE_DATA_IMAGE_PREFIX.test(urlLike)) return true;
+  if (SAFE_HTTP_PREFIX.test(urlLike)) return true;
+  if (SAFE_ABSOLUTE_PATH.test(urlLike)) return true;
+  if (SAFE_RELATIVE_PATH.test(urlLike)) return true;
+  return false;
+};
+
+const resolveFavicon = (logoUrl) => {
   const normalizedLogoUrl =
-    typeof logoUrl === 'string' ? logoUrl.trim() : logoUrl;
+    typeof logoUrl === 'string' ? logoUrl.trim() : '';
+  const normalizedLower = normalizedLogoUrl.toLowerCase();
+  const isEmptyLike =
+    !normalizedLower ||
+    normalizedLower === 'null' ||
+    normalizedLower === 'undefined' ||
+    normalizedLower === 'false';
 
-  if (
-    !normalizedLogoUrl ||
-    normalizedLogoUrl === LEGACY_LOGO_PATH ||
-    normalizedLogoUrl === LEGACY_FAVICON_PATH
-  ) {
-    return BRAND_FAVICON_PATH;
+  if (isEmptyLike) {
+    return { url: BRAND_FAVICON_URL, forcedBrand: true };
   }
 
-  return normalizedLogoUrl;
+  const pathname = extractPathname(normalizedLogoUrl);
+  const isLegacyPath =
+    LEGACY_FAVICON_PATHS.has(pathname) ||
+    pathname.endsWith(LEGACY_LOGO_PATH) ||
+    pathname.endsWith(LEGACY_FAVICON_PATH);
+  if (isLegacyPath) {
+    return { url: BRAND_FAVICON_URL, forcedBrand: true };
+  }
+
+  if (!isSafeFaviconUrl(normalizedLogoUrl)) {
+    return { url: BRAND_FAVICON_URL, forcedBrand: true };
+  }
+
+  return { url: normalizedLogoUrl, forcedBrand: false };
 };
 
 const applyFavicon = (logoUrl) => {
-  const faviconUrl = resolveFaviconUrl(logoUrl);
+  const { url: faviconUrl, forcedBrand } = resolveFavicon(logoUrl);
+  const isBrandFavicon = faviconUrl.startsWith(BRAND_FAVICON_PATH);
 
   let iconLinkElement = document.querySelector("link[rel~='icon']");
   if (!iconLinkElement) {
@@ -68,6 +116,7 @@ const applyFavicon = (logoUrl) => {
     iconLinkElement.rel = 'icon';
     document.head.appendChild(iconLinkElement);
   }
+  iconLinkElement.type = isBrandFavicon ? 'image/svg+xml' : '';
   iconLinkElement.href = faviconUrl;
 
   let shortcutIconLinkElement = document.querySelector(
@@ -78,7 +127,16 @@ const applyFavicon = (logoUrl) => {
     shortcutIconLinkElement.rel = 'shortcut icon';
     document.head.appendChild(shortcutIconLinkElement);
   }
+  shortcutIconLinkElement.type = isBrandFavicon ? 'image/svg+xml' : '';
   shortcutIconLinkElement.href = faviconUrl;
+
+  if (forcedBrand) {
+    try {
+      localStorage.setItem('logo', BRAND_FAVICON_PATH);
+    } catch {
+      // ignore storage errors
+    }
+  }
 };
 
 const PageLayout = () => {
