@@ -34,3 +34,5 @@ token_estimator_test.go
 .trellis/
 .agents/
 .playwright-mcp
+.test
+skills-lock.json
