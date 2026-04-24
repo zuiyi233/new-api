@@ -428,6 +428,14 @@ func DeleteInvalidRedemptions() (int64, error) {
 }
 
 func ValidateRedemptionAdminPayload(redemption *Redemption) error {
+	return validateRedemptionAdminPayload(redemption, false)
+}
+
+func ValidateRedemptionAdminPayloadForUpdate(redemption *Redemption) error {
+	return validateRedemptionAdminPayload(redemption, true)
+}
+
+func validateRedemptionAdminPayload(redemption *Redemption, isUpdate bool) error {
 	if redemption == nil {
 		return errors.New("兑换码参数不能为空")
 	}
@@ -453,31 +461,41 @@ func ValidateRedemptionAdminPayload(redemption *Redemption) error {
 	if redemption.Status == 0 {
 		redemption.Status = common.RedemptionCodeStatusEnabled
 	}
-	if redemption.Status != common.RedemptionCodeStatusEnabled && redemption.Status != common.RedemptionCodeStatusDisabled {
-		return errors.New("兑换码状态无效")
-	}
-	now := common.GetTimestamp()
-	if redemption.ExpiredTime != 0 && redemption.ExpiredTime < common.GetTimestamp() {
-		return errors.New("过期时间不能早于当前时间")
-	}
-	if redemption.BenefitExpiresAt != 0 && redemption.BenefitExpiresAt < now {
-		return errors.New("权益过期时间不能早于当前时间")
-	}
-	if redemptionIncludesQuotaBenefit(redemption.BenefitType) {
-		if redemption.Quota <= 0 {
-			return errors.New("兑换额度必须大于 0")
-		}
-	} else if redemption.Quota < 0 {
-		return errors.New("兑换额度不能为负数")
-	}
-	if redemptionIncludesConcurrencyBenefit(redemption.BenefitType) {
-		if redemption.ConcurrencyValue <= 0 {
-			return errors.New("并发权益值必须大于 0")
+	if isUpdate {
+		if redemption.Status != common.RedemptionCodeStatusEnabled && redemption.Status != common.RedemptionCodeStatusDisabled && redemption.Status != common.RedemptionCodeStatusUsed {
+			return errors.New("兑换码状态无效")
 		}
 	} else {
-		redemption.ConcurrencyValue = 0
-		redemption.BenefitExpiresAt = 0
-		redemption.ConcurrencyMode = ""
+		if redemption.Status != common.RedemptionCodeStatusEnabled && redemption.Status != common.RedemptionCodeStatusDisabled {
+			return errors.New("兑换码状态无效")
+		}
+	}
+	now := common.GetTimestamp()
+	if !isUpdate {
+		if redemption.ExpiredTime != 0 && redemption.ExpiredTime < now {
+			return errors.New("过期时间不能早于当前时间")
+		}
+		if redemption.BenefitExpiresAt != 0 && redemption.BenefitExpiresAt < now {
+			return errors.New("权益过期时间不能早于当前时间")
+		}
+	}
+	if redemption.Status != common.RedemptionCodeStatusUsed {
+		if redemptionIncludesQuotaBenefit(redemption.BenefitType) {
+			if redemption.Quota <= 0 {
+				return errors.New("兑换额度必须大于 0")
+			}
+		} else if redemption.Quota < 0 {
+			return errors.New("兑换额度不能为负数")
+		}
+		if redemptionIncludesConcurrencyBenefit(redemption.BenefitType) {
+			if redemption.ConcurrencyValue <= 0 {
+				return errors.New("并发权益值必须大于 0")
+			}
+		} else {
+			redemption.ConcurrencyValue = 0
+			redemption.BenefitExpiresAt = 0
+			redemption.ConcurrencyMode = ""
+		}
 	}
 	redemption.BatchNo = strings.TrimSpace(redemption.BatchNo)
 	redemption.CampaignName = strings.TrimSpace(redemption.CampaignName)

@@ -208,7 +208,6 @@ const CodeFilterViewsBar = ({
       >
         {views.length === 0 ? (
           <Empty
-            image={<Empty.PureContent />}
             description={t('暂无已保存筛选视图')}
           />
         ) : (

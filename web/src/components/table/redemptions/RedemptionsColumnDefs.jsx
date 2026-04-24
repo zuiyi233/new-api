@@ -301,7 +301,6 @@ export const getRedemptionsColumns = ({
                 setEditingRedemption(record);
                 setShowEdit(true);
               }}
-              disabled={record.status !== REDEMPTION_STATUS.UNUSED}
             >
               {t('编辑')}
             </Button>

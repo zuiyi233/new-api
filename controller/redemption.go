@@ -290,24 +290,35 @@ func UpdateRedemption(c *gin.Context) {
 			payload.Status = redemption.Status
 		}
 		payload.Count = 1
-		if err := model.ValidateRedemptionAdminPayload(payload); err != nil {
+		if err := model.ValidateRedemptionAdminPayloadForUpdate(payload); err != nil {
 			common.ApiError(c, err)
 			return
 		}
-		redemption.Name = payload.Name
-		redemption.Status = payload.Status
-		redemption.Quota = payload.Quota
-		redemption.BenefitType = payload.BenefitType
-		redemption.ConcurrencyMode = payload.ConcurrencyMode
-		redemption.ConcurrencyValue = payload.ConcurrencyValue
-		redemption.BenefitExpiresAt = payload.BenefitExpiresAt
-		redemption.BatchNo = payload.BatchNo
-		redemption.CampaignName = payload.CampaignName
-		redemption.Channel = payload.Channel
-		redemption.SourcePlatform = payload.SourcePlatform
-		redemption.ExternalOrderNo = payload.ExternalOrderNo
-		redemption.Notes = payload.Notes
-		redemption.ExpiredTime = payload.ExpiredTime
+		if redemption.Status == common.RedemptionCodeStatusUsed {
+			redemption.Name = payload.Name
+			redemption.BatchNo = payload.BatchNo
+			redemption.CampaignName = payload.CampaignName
+			redemption.Channel = payload.Channel
+			redemption.SourcePlatform = payload.SourcePlatform
+			redemption.ExternalOrderNo = payload.ExternalOrderNo
+			redemption.Notes = payload.Notes
+			redemption.ExpiredTime = payload.ExpiredTime
+		} else {
+			redemption.Name = payload.Name
+			redemption.Status = payload.Status
+			redemption.Quota = payload.Quota
+			redemption.BenefitType = payload.BenefitType
+			redemption.ConcurrencyMode = payload.ConcurrencyMode
+			redemption.ConcurrencyValue = payload.ConcurrencyValue
+			redemption.BenefitExpiresAt = payload.BenefitExpiresAt
+			redemption.BatchNo = payload.BatchNo
+			redemption.CampaignName = payload.CampaignName
+			redemption.Channel = payload.Channel
+			redemption.SourcePlatform = payload.SourcePlatform
+			redemption.ExternalOrderNo = payload.ExternalOrderNo
+			redemption.Notes = payload.Notes
+			redemption.ExpiredTime = payload.ExpiredTime
+		}
 	}
 	if err = redemption.Update(); err != nil {
 		common.ApiError(c, err)

@@ -18,12 +18,12 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import RegistrationCodesTable from '../../components/table/registration-codes';
+import RegistrationCodesPage from '../../components/table/registration-codes';
 
 const RegistrationCode = () => {
   return (
     <div className='mt-[60px] px-2'>
-      <RegistrationCodesTable />
+      <RegistrationCodesPage />
     </div>
   );
 };

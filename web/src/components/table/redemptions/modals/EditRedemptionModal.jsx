@@ -48,6 +48,7 @@ import {
   IconGift,
   IconSave,
 } from '@douyinfe/semi-icons';
+import { REDEMPTION_STATUS } from '../../../../constants/redemption.constants';
 
 const { Text, Title } = Typography;
 
@@ -105,6 +106,7 @@ const EditRedemptionModal = ({
   const isMobile = useIsMobile();
   const formApiRef = useRef(null);
   const isEdit = editingRedemption?.id !== undefined;
+  const isUsed = isEdit && editingRedemption?.status === REDEMPTION_STATUS.USED;
   const [loading, setLoading] = useState(false);
 
   const title = useMemo(
@@ -174,26 +176,28 @@ const EditRedemptionModal = ({
       showError(t('请输入名称'));
       return;
     }
-    const includesQuota =
-      payload.benefit_type === 'quota' || payload.benefit_type === 'mixed';
-    const includesConcurrency =
-      payload.benefit_type === 'concurrency_stack' ||
-      payload.benefit_type === 'concurrency_override' ||
-      payload.benefit_type === 'mixed';
-    if (includesQuota && payload.quota <= 0) {
-      showError(t('额度必须大于 0'));
-      return;
-    }
-    if (includesConcurrency && payload.concurrency_value <= 0) {
-      showError(t('并发权益值必须大于 0'));
-      return;
-    }
-    if (!includesQuota) {
-      payload.quota = 0;
-    }
-    if (!includesConcurrency) {
-      payload.concurrency_value = 0;
-      payload.benefit_expires_at = 0;
+    if (!isUsed) {
+      const includesQuota =
+        payload.benefit_type === 'quota' || payload.benefit_type === 'mixed';
+      const includesConcurrency =
+        payload.benefit_type === 'concurrency_stack' ||
+        payload.benefit_type === 'concurrency_override' ||
+        payload.benefit_type === 'mixed';
+      if (includesQuota && payload.quota <= 0) {
+        showError(t('额度必须大于 0'));
+        return;
+      }
+      if (includesConcurrency && payload.concurrency_value <= 0) {
+        showError(t('并发权益值必须大于 0'));
+        return;
+      }
+      if (!includesQuota) {
+        payload.quota = 0;
+      }
+      if (!includesConcurrency) {
+        payload.concurrency_value = 0;
+        payload.benefit_expires_at = 0;
+      }
     }
     if (!isEdit && payload.count <= 0) {
       showError(t('生成数量必须大于 0'));
@@ -346,6 +350,7 @@ const EditRedemptionModal = ({
                         { label: t('额度 + 并发'), value: 'mixed' },
                       ]}
                       style={{ width: '100%' }}
+                      disabled={isUsed}
                     />
                   </Col>
                   {(values.benefit_type === 'concurrency_stack' ||
@@ -361,6 +366,7 @@ const EditRedemptionModal = ({
                             { label: t('覆盖'), value: 'override' },
                           ]}
                           style={{ width: '100%' }}
+                          disabled={isUsed}
                         />
                       </Col>
                       <Col span={12}>
@@ -369,6 +375,7 @@ const EditRedemptionModal = ({
                           label={t('并发权益值')}
                           min={0}
                           style={{ width: '100%' }}
+                          disabled={isUsed}
                         />
                       </Col>
                       <Col span={12}>
@@ -379,6 +386,7 @@ const EditRedemptionModal = ({
                           placeholder={t('留空为永久')}
                           style={{ width: '100%' }}
                           showClear
+                          disabled={isUsed}
                         />
                       </Col>
                     </>
@@ -402,6 +410,7 @@ const EditRedemptionModal = ({
                         { label: t('禁用'), value: 2 },
                       ]}
                       style={{ width: '100%' }}
+                      disabled={isUsed}
                     />
                   </Col>
                 </Row>
@@ -440,6 +449,7 @@ const EditRedemptionModal = ({
                           { value: 500000000, label: '1000$' },
                         ]}
                         showClear
+                        disabled={isUsed}
                       />
                     </Col>
                   )}

@@ -24,6 +24,48 @@ const normalizeItems = (data) => {
 
 const toCSVCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
 
+class BatchSummaryErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('CodeBatchSummaryModal error:', error, errorInfo);
+    showError(error?.message || '批次概览加载出错');
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Modal
+          title={this.props.title}
+          visible={this.props.visible}
+          width={600}
+          onCancel={this.props.onCancel}
+          footer={
+            <Button onClick={this.props.onCancel}>
+              {this.props.t?.('关闭') || '关闭'}
+            </Button>
+          }
+        >
+          <Empty
+            description={
+              this.props.t?.('批次概览加载出错，请关闭后重试') ||
+              '批次概览加载出错，请关闭后重试'
+            }
+          />
+        </Modal>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const CodeBatchSummaryModal = ({
   visible,
   onCancel,
@@ -46,6 +88,7 @@ const CodeBatchSummaryModal = ({
       const separator = query ? '&' : '';
       const res = await API.get(
         `${apiBasePath}/batches?${query}${separator}limit=100`,
+        { skipErrorHandler: true },
       );
       const { success, message, data } = res.data;
       if (!success) {
@@ -54,7 +97,7 @@ const CodeBatchSummaryModal = ({
       }
       setRows(normalizeItems(data));
     } catch (error) {
-      showError(error.message);
+      showError(error?.response?.data?.message || error?.message || t('批次概览加载失败'));
     } finally {
       setLoading(false);
     }
@@ -62,7 +105,7 @@ const CodeBatchSummaryModal = ({
 
   useEffect(() => {
     if (visible) {
-      loadSummaries().then();
+      loadSummaries();
     } else {
       setRows([]);
     }
@@ -189,49 +232,55 @@ const CodeBatchSummaryModal = ({
   }, [codeType, t]);
 
   return (
-    <Modal
-      title={title}
+    <BatchSummaryErrorBoundary
       visible={visible}
-      width={1100}
       onCancel={onCancel}
-      footer={
-        <Space>
-          <Button onClick={onCancel}>{t('关闭')}</Button>
-          <Button
-            type='tertiary'
-            onClick={handleExport}
-            disabled={!rows.length}
-          >
-            {t('导出 CSV')}
-          </Button>
-          <Button loading={loading} onClick={() => loadSummaries()}>
-            {t('刷新')}
-          </Button>
-        </Space>
-      }
+      title={title}
+      t={t}
     >
-      <div className='flex flex-col gap-3'>
-        <Typography.Text type='tertiary'>
-          {t(
-            '按当前页面筛选条件统计最近批次的总体情况，点击批次号可快速复制。',
+      <Modal
+        title={title}
+        visible={visible}
+        width={1100}
+        onCancel={onCancel}
+        footer={
+          <Space>
+            <Button onClick={onCancel}>{t('关闭')}</Button>
+            <Button
+              type='tertiary'
+              onClick={handleExport}
+              disabled={!rows.length}
+            >
+              {t('导出 CSV')}
+            </Button>
+            <Button loading={loading} onClick={() => loadSummaries()}>
+              {t('刷新')}
+            </Button>
+          </Space>
+        }
+      >
+        <div className='flex flex-col gap-3'>
+          <Typography.Text type='tertiary'>
+            {t(
+              '按当前页面筛选条件统计最近批次的总体情况，点击批次号可快速复制。',
+            )}
+          </Typography.Text>
+          {rows.length === 0 ? (
+            <Empty
+              description={loading ? t('正在加载批次概览') : t('暂无批次数据')}
+            />
+          ) : (
+            <Table
+              rowKey='batch_no'
+              dataSource={rows}
+              columns={columns}
+              loading={loading}
+              pagination={false}
+            />
           )}
-        </Typography.Text>
-        {rows.length === 0 ? (
-          <Empty
-            image={<Empty.PureContent />}
-            description={loading ? t('正在加载批次概览') : t('暂无批次数据')}
-          />
-        ) : (
-          <Table
-            rowKey='batch_no'
-            dataSource={rows}
-            columns={columns}
-            loading={loading}
-            pagination={false}
-          />
-        )}
-      </div>
-    </Modal>
+        </div>
+      </Modal>
+    </BatchSummaryErrorBoundary>
   );
 };
 
