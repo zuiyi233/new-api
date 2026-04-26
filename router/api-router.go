@@ -144,6 +144,22 @@ func SetApiRouter(router *gin.Engine) {
 			}
 		}
 
+		// Hub adapter routes: 支持第三方登录回调后的“一次引导同步”
+		hubRoute := apiRouter.Group("/hub")
+		{
+			hubRoute.POST("/session/bootstrap", controller.HubSessionBootstrap)
+
+			securedHubRoute := hubRoute.Group("/")
+			securedHubRoute.Use(middleware.AccessTokenOnlyUserAuth())
+			{
+				securedHubRoute.GET("/user/self", controller.GetSelf)
+				securedHubRoute.GET("/user/entitlements", controller.GetSelfEntitlements)
+				securedHubRoute.GET("/user/concurrency", controller.GetSelfConcurrency)
+				securedHubRoute.GET("/user/checkin", controller.GetCheckinStatus)
+				securedHubRoute.GET("/user/models", middleware.RequireProductEntitlement(common.ProductKeyNovel), controller.GetUserModels)
+			}
+		}
+
 		// Subscription billing (plans, purchase, admin management)
 		subscriptionRoute := apiRouter.Group("/subscription")
 		subscriptionRoute.Use(middleware.UserAuth())
@@ -204,6 +220,7 @@ func SetApiRouter(router *gin.Engine) {
 			oidcClientRoute.GET("/", controller.AdminListOIDCClients)
 			oidcClientRoute.POST("/", controller.AdminCreateOIDCClient)
 			oidcClientRoute.PUT("/:client_id", controller.AdminUpdateOIDCClient)
+			oidcClientRoute.POST("/:client_id/rotate_secret", controller.AdminRotateOIDCClientSecret)
 			oidcClientRoute.POST("/:client_id/disable", controller.AdminDisableOIDCClient)
 			oidcClientRoute.POST("/:client_id/enable", controller.AdminEnableOIDCClient)
 			oidcClientRoute.DELETE("/:client_id", controller.AdminDeleteOIDCClient)

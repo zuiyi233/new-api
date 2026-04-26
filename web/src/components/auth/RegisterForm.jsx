@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   API,
   getLogo,
@@ -67,6 +67,7 @@ import { SiDiscord } from 'react-icons/si';
 
 const RegisterForm = () => {
   let navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const githubButtonTextKeyByState = {
     idle: '使用 GitHub 继续',
@@ -150,6 +151,41 @@ const RegisterForm = () => {
   );
 
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+
+  const normalizeContinuePath = (continuePath, fallbackPath = '') => {
+    if (!continuePath) {
+      return fallbackPath;
+    }
+    const isAbsoluteURL = /^https?:\/\//i.test(continuePath);
+    const isRelativePath = continuePath.startsWith('/');
+    if (!isAbsoluteURL && !isRelativePath) {
+      return fallbackPath;
+    }
+    try {
+      const continueURL = new URL(continuePath, window.location.origin);
+      if (continueURL.origin !== window.location.origin) {
+        return fallbackPath;
+      }
+      const redirectPath = `${continueURL.pathname}${continueURL.search}${continueURL.hash}`;
+      if (!redirectPath.startsWith('/')) {
+        return fallbackPath;
+      }
+      return redirectPath;
+    } catch {
+      return fallbackPath;
+    }
+  };
+
+  const getOAuthContinuePath = () =>
+    normalizeContinuePath(searchParams.get('continue'), '');
+
+  const buildLoginPathWithContinue = () => {
+    const continuePath = getOAuthContinuePath();
+    if (!continuePath) return '/login';
+    const query = new URLSearchParams();
+    query.set('continue', continuePath);
+    return `/login?${query.toString()}`;
+  };
 
   useEffect(() => {
     setShowEmailVerification(!!status?.email_verification);
@@ -341,7 +377,7 @@ const RegisterForm = () => {
         );
         const { success, message } = res.data;
         if (success) {
-          navigate('/login');
+          navigate(buildLoginPathWithContinue());
           showSuccess('注册成功！');
         } else {
           showError(message);
@@ -395,7 +431,10 @@ const RegisterForm = () => {
       setGithubButtonDisabled(true);
     }, 20000);
     try {
-      onGitHubOAuthClicked(status.github_client_id, { shouldLogout: true });
+      onGitHubOAuthClicked(status.github_client_id, {
+        shouldLogout: true,
+        continuePath: getOAuthContinuePath(),
+      });
     } finally {
       setTimeout(() => setGithubLoading(false), 3000);
     }
@@ -404,7 +443,10 @@ const RegisterForm = () => {
   const handleDiscordClick = () => {
     setDiscordLoading(true);
     try {
-      onDiscordOAuthClicked(status.discord_client_id, { shouldLogout: true });
+      onDiscordOAuthClicked(status.discord_client_id, {
+        shouldLogout: true,
+        continuePath: getOAuthContinuePath(),
+      });
     } finally {
       setTimeout(() => setDiscordLoading(false), 3000);
     }
@@ -417,7 +459,7 @@ const RegisterForm = () => {
         status.oidc_authorization_endpoint,
         status.oidc_client_id,
         false,
-        { shouldLogout: true },
+        { shouldLogout: true, continuePath: getOAuthContinuePath() },
       );
     } finally {
       setTimeout(() => setOidcLoading(false), 3000);
@@ -427,7 +469,10 @@ const RegisterForm = () => {
   const handleLinuxDOClick = () => {
     setLinuxdoLoading(true);
     try {
-      onLinuxDOOAuthClicked(status.linuxdo_client_id, { shouldLogout: true });
+      onLinuxDOOAuthClicked(status.linuxdo_client_id, {
+        shouldLogout: true,
+        continuePath: getOAuthContinuePath(),
+      });
     } finally {
       setTimeout(() => setLinuxdoLoading(false), 3000);
     }
@@ -436,7 +481,10 @@ const RegisterForm = () => {
   const handleCustomOAuthClick = (provider) => {
     setCustomOAuthLoading((prev) => ({ ...prev, [provider.slug]: true }));
     try {
-      onCustomOAuthClicked(provider, { shouldLogout: true });
+      onCustomOAuthClicked(provider, {
+        shouldLogout: true,
+        continuePath: getOAuthContinuePath(),
+      });
     } finally {
       setTimeout(() => {
         setCustomOAuthLoading((prev) => ({ ...prev, [provider.slug]: false }));
@@ -640,7 +688,7 @@ const RegisterForm = () => {
                 <Text>
                   {t('已有账户？')}{' '}
                   <Link
-                    to='/login'
+                    to={buildLoginPathWithContinue()}
                     className='text-blue-600 hover:text-blue-800 font-medium'
                   >
                     {t('登录')}
@@ -859,7 +907,7 @@ const RegisterForm = () => {
                 <Text>
                   {t('已有账户？')}{' '}
                   <Link
-                    to='/login'
+                    to={buildLoginPathWithContinue()}
                     className='text-blue-600 hover:text-blue-800 font-medium'
                   >
                     {t('登录')}

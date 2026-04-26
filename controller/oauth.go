@@ -3,7 +3,9 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
@@ -26,6 +28,12 @@ func GenerateOAuthCode(c *gin.Context) {
 	affCode := c.Query("aff")
 	if affCode != "" {
 		session.Set("aff", affCode)
+	}
+	continuePath := normalizeOAuthContinuePath(c.Query("continue"))
+	if continuePath != "" {
+		session.Set("oauth_continue", continuePath)
+	} else {
+		session.Delete("oauth_continue")
 	}
 	session.Set("oauth_state", state)
 	err := session.Save()
@@ -124,6 +132,15 @@ func HandleOAuth(c *gin.Context) {
 	}
 
 	// 9. Setup login
+	continuePath := ""
+	if rawContinue := session.Get("oauth_continue"); rawContinue != nil {
+		continuePath = normalizeOAuthContinuePath(fmt.Sprintf("%v", rawContinue))
+	}
+	if continuePath != "" {
+		c.Set("post_login_redirect", continuePath)
+	}
+	session.Delete("oauth_continue")
+	_ = session.Save()
 	setupLogin(user, c)
 }
 
@@ -359,4 +376,35 @@ func handleOAuthError(c *gin.Context, err error) {
 	default:
 		common.ApiError(c, err)
 	}
+}
+
+func normalizeOAuthContinuePath(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.HasPrefix(trimmed, "//") {
+		return ""
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil {
+		return ""
+	}
+	if parsed.IsAbs() || parsed.Host != "" {
+		return ""
+	}
+	if !strings.HasPrefix(parsed.Path, "/") {
+		return ""
+	}
+	if strings.ContainsAny(parsed.Path, "\r\n") {
+		return ""
+	}
+	result := parsed.Path
+	if parsed.RawQuery != "" {
+		result += "?" + parsed.RawQuery
+	}
+	if parsed.Fragment != "" {
+		result += "#" + parsed.Fragment
+	}
+	return result
 }

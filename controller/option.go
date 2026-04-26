@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -67,6 +69,149 @@ func buildCompletionRatioMetaValue(optionValues map[string]string) string {
 		return "{}"
 	}
 	return string(jsonBytes)
+}
+
+func validateCheckinOptionValue(key string, value string) error {
+	const maxCheckinQuotaValue = 2_000_000_000
+	const maxCheckinIntervalHours = 24 * 365
+
+	candidate := operation_setting.GetNormalizedCheckinSetting()
+
+	parseIntWithRange := func(minAllowed int, maxAllowed int) (int, error) {
+		intValue, err := strconv.Atoi(value)
+		if err != nil {
+			// 兼容数据库中可能存在的 "2.000000" 这类值
+			floatValue, floatErr := strconv.ParseFloat(value, 64)
+			if floatErr != nil {
+				return 0, fmt.Errorf("签到配置 %s 需要为整数", key)
+			}
+			intValue = int(floatValue)
+		}
+		if intValue < minAllowed {
+			return 0, fmt.Errorf("签到配置 %s 不能小于 %d", key, minAllowed)
+		}
+		if intValue > maxAllowed {
+			return 0, fmt.Errorf("签到配置 %s 不能大于 %d", key, maxAllowed)
+		}
+		return intValue, nil
+	}
+
+	switch key {
+	case "checkin_setting.enabled":
+		enabled, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("签到配置 %s 需要为布尔值", key)
+		}
+		candidate.Enabled = enabled
+	case "checkin_setting.advanced_enabled":
+		enabled, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("签到配置 %s 需要为布尔值", key)
+		}
+		candidate.AdvancedEnabled = enabled
+	case "checkin_setting.min_quota",
+		"checkin_setting.max_quota",
+		"checkin_setting.basic_min_balance_quota",
+		"checkin_setting.basic_max_balance_quota",
+		"checkin_setting.advanced_min_balance_quota",
+		"checkin_setting.advanced_max_balance_quota",
+		"checkin_setting.advanced_min_quota",
+		"checkin_setting.advanced_max_quota",
+		"checkin_setting.weekly_reward_cap_quota":
+		intValue, err := parseIntWithRange(0, maxCheckinQuotaValue)
+		if err != nil {
+			return err
+		}
+		switch key {
+		case "checkin_setting.min_quota":
+			candidate.MinQuota = intValue
+		case "checkin_setting.max_quota":
+			candidate.MaxQuota = intValue
+		case "checkin_setting.basic_min_balance_quota":
+			candidate.BasicMinBalanceQuota = intValue
+		case "checkin_setting.basic_max_balance_quota":
+			candidate.BasicMaxBalanceQuota = intValue
+		case "checkin_setting.advanced_min_balance_quota":
+			candidate.AdvancedMinBalanceQuota = intValue
+		case "checkin_setting.advanced_max_balance_quota":
+			candidate.AdvancedMaxBalanceQuota = intValue
+		case "checkin_setting.advanced_min_quota":
+			candidate.AdvancedMinQuota = intValue
+		case "checkin_setting.advanced_max_quota":
+			candidate.AdvancedMaxQuota = intValue
+		case "checkin_setting.weekly_reward_cap_quota":
+			candidate.WeeklyRewardCapQuota = intValue
+		}
+	case "checkin_setting.basic_reward_bands":
+		var bands []operation_setting.CheckinRewardBand
+		if err := common.UnmarshalJsonStr(value, &bands); err != nil {
+			return fmt.Errorf("签到配置 %s 需要为合法 JSON", key)
+		}
+		candidate.BasicRewardBands = bands
+	case "checkin_setting.advanced_reward_bands":
+		var bands []operation_setting.CheckinRewardBand
+		if err := common.UnmarshalJsonStr(value, &bands); err != nil {
+			return fmt.Errorf("签到配置 %s 需要为合法 JSON", key)
+		}
+		candidate.AdvancedRewardBands = bands
+	case "checkin_setting.min_interval_hours":
+		intValue, err := parseIntWithRange(0, maxCheckinIntervalHours)
+		if err != nil {
+			return err
+		}
+		candidate.MinIntervalHours = intValue
+	case "checkin_setting.reward_rule":
+		if !operation_setting.IsValidCheckinRewardRule(value) {
+			return fmt.Errorf("签到配置 reward_rule 非法，仅支持 %s / %s",
+				operation_setting.CheckinRewardRuleHighestEligible,
+				operation_setting.CheckinRewardRuleLowestEligible)
+		}
+		candidate.RewardRule = value
+	}
+
+	if candidate.MaxQuota < candidate.MinQuota {
+		return errors.New("基础签到最大奖励不能小于最小奖励")
+	}
+	if candidate.BasicMaxBalanceQuota > 0 && candidate.BasicMaxBalanceQuota < candidate.BasicMinBalanceQuota {
+		return errors.New("基础签到余额上限不能低于基础签到余额门槛")
+	}
+	if candidate.AdvancedEnabled {
+		if candidate.AdvancedMinBalanceQuota < candidate.BasicMinBalanceQuota {
+			return errors.New("高级签到余额门槛不能低于基础签到余额门槛")
+		}
+		if candidate.AdvancedMaxBalanceQuota > 0 &&
+			candidate.AdvancedMaxBalanceQuota < candidate.AdvancedMinBalanceQuota {
+			return errors.New("高级签到余额上限不能低于高级签到余额门槛")
+		}
+		if candidate.AdvancedMaxQuota < candidate.AdvancedMinQuota {
+			return errors.New("高级签到最大奖励不能小于最小奖励")
+		}
+	}
+	if candidate.WeeklyRewardCapQuota > 0 &&
+		candidate.WeeklyRewardCapQuota < candidate.MinQuota {
+		return errors.New("每周奖励封顶不能低于基础签到最小奖励")
+	}
+
+	switch key {
+	case "checkin_setting.basic_reward_bands":
+		if err := operation_setting.ValidateCheckinRewardBands(
+			candidate.BasicRewardBands,
+			candidate.MinQuota,
+			candidate.MaxQuota,
+		); err != nil {
+			return fmt.Errorf("基础签到奖励分布校验失败：%w", err)
+		}
+	case "checkin_setting.advanced_reward_bands":
+		if err := operation_setting.ValidateCheckinRewardBands(
+			candidate.AdvancedRewardBands,
+			candidate.AdvancedMinQuota,
+			candidate.AdvancedMaxQuota,
+		); err != nil {
+			return fmt.Errorf("高级签到奖励分布校验失败：%w", err)
+		}
+	}
+
+	return nil
 }
 
 func GetOptions(c *gin.Context) {
@@ -334,11 +479,36 @@ func UpdateOption(c *gin.Context) {
 			return
 		}
 	}
+
+	if strings.HasPrefix(option.Key, "checkin_setting.") {
+		err = validateCheckinOptionValue(option.Key, option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+
 	err = model.UpdateOption(option.Key, option.Value.(string))
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
+
+	if strings.HasPrefix(option.Key, "checkin_setting.") {
+		adminId := c.GetInt("id")
+		model.RecordLogWithAdminInfo(adminId, model.LogTypeManage,
+			fmt.Sprintf("更新签到配置 %s = %s", option.Key, option.Value.(string)),
+			map[string]interface{}{
+				"option_key":   option.Key,
+				"option_value": option.Value.(string),
+				"client_ip":    c.ClientIP(),
+			},
+		)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

@@ -142,8 +142,7 @@ const LoginForm = () => {
       status.telegram_oauth ||
       hasCustomOAuthProviders,
   );
-  const getSafeContinuePath = (fallbackPath = '/console') => {
-    const continuePath = searchParams.get('continue');
+  const normalizeContinuePath = (continuePath, fallbackPath = '/console') => {
     if (!continuePath) {
       return fallbackPath;
     }
@@ -165,6 +164,17 @@ const LoginForm = () => {
     } catch {
       return fallbackPath;
     }
+  };
+  const getSafeContinuePath = (fallbackPath = '/console') =>
+    normalizeContinuePath(searchParams.get('continue'), fallbackPath);
+  const getOAuthContinuePath = () =>
+    normalizeContinuePath(searchParams.get('continue'), '');
+  const buildRegisterPathWithContinue = () => {
+    const continuePath = getOAuthContinuePath();
+    if (!continuePath) return '/register';
+    const query = new URLSearchParams();
+    query.set('continue', continuePath);
+    return `/register?${query.toString()}`;
   };
 
   useEffect(() => {
@@ -354,7 +364,10 @@ const LoginForm = () => {
       setGithubButtonDisabled(true);
     }, 20000);
     try {
-      onGitHubOAuthClicked(status.github_client_id, { shouldLogout: true });
+      onGitHubOAuthClicked(status.github_client_id, {
+        shouldLogout: true,
+        continuePath: getOAuthContinuePath(),
+      });
     } finally {
       // 由于重定向，这里不会执行到，但为了完整性添加
       setTimeout(() => setGithubLoading(false), 3000);
@@ -369,7 +382,10 @@ const LoginForm = () => {
     }
     setDiscordLoading(true);
     try {
-      onDiscordOAuthClicked(status.discord_client_id, { shouldLogout: true });
+      onDiscordOAuthClicked(status.discord_client_id, {
+        shouldLogout: true,
+        continuePath: getOAuthContinuePath(),
+      });
     } finally {
       // 由于重定向，这里不会执行到，但为了完整性添加
       setTimeout(() => setDiscordLoading(false), 3000);
@@ -388,7 +404,7 @@ const LoginForm = () => {
         status.oidc_authorization_endpoint,
         status.oidc_client_id,
         false,
-        { shouldLogout: true },
+        { shouldLogout: true, continuePath: getOAuthContinuePath() },
       );
     } finally {
       // 由于重定向，这里不会执行到，但为了完整性添加
@@ -404,7 +420,10 @@ const LoginForm = () => {
     }
     setLinuxdoLoading(true);
     try {
-      onLinuxDOOAuthClicked(status.linuxdo_client_id, { shouldLogout: true });
+      onLinuxDOOAuthClicked(status.linuxdo_client_id, {
+        shouldLogout: true,
+        continuePath: getOAuthContinuePath(),
+      });
     } finally {
       // 由于重定向，这里不会执行到，但为了完整性添加
       setTimeout(() => setLinuxdoLoading(false), 3000);
@@ -419,7 +438,10 @@ const LoginForm = () => {
     }
     setCustomOAuthLoading((prev) => ({ ...prev, [provider.slug]: true }));
     try {
-      onCustomOAuthClicked(provider, { shouldLogout: true });
+      onCustomOAuthClicked(provider, {
+        shouldLogout: true,
+        continuePath: getOAuthContinuePath(),
+      });
     } finally {
       // 由于重定向，这里不会执行到，但为了完整性添加
       setTimeout(() => {
@@ -725,7 +747,7 @@ const LoginForm = () => {
                   <Text>
                     {t('没有账户？')}{' '}
                     <Link
-                      to='/register'
+                      to={buildRegisterPathWithContinue()}
                       className='text-blue-600 hover:text-blue-800 font-medium'
                     >
                       {t('注册')}
@@ -878,7 +900,7 @@ const LoginForm = () => {
                   <Text>
                     {t('没有账户？')}{' '}
                     <Link
-                      to='/register'
+                      to={buildRegisterPathWithContinue()}
                       className='text-blue-600 hover:text-blue-800 font-medium'
                     >
                       {t('注册')}

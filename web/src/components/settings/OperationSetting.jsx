@@ -76,8 +76,22 @@ const OperationSetting = () => {
     'monitor_setting.auto_test_channel_enabled': false,
     'monitor_setting.auto_test_channel_minutes': 10 /* 签到设置 */,
     'checkin_setting.enabled': false,
-    'checkin_setting.min_quota': 1000,
-    'checkin_setting.max_quota': 10000,
+    'checkin_setting.basic_min_balance_quota': 25000000,
+    'checkin_setting.basic_max_balance_quota': 40000000,
+    'checkin_setting.min_quota': 25000,
+    'checkin_setting.max_quota': 500000,
+    'checkin_setting.basic_reward_bands':
+      '[{\"min_quota\":25000,\"max_quota\":100000,\"weight\":70},{\"min_quota\":100000,\"max_quota\":300000,\"weight\":25},{\"min_quota\":300000,\"max_quota\":500000,\"weight\":5}]',
+    'checkin_setting.advanced_enabled': true,
+    'checkin_setting.advanced_min_balance_quota': 50000000,
+    'checkin_setting.advanced_max_balance_quota': 75000000,
+    'checkin_setting.advanced_min_quota': 250000,
+    'checkin_setting.advanced_max_quota': 2500000,
+    'checkin_setting.advanced_reward_bands':
+      '[{\"min_quota\":250000,\"max_quota\":750000,\"weight\":65},{\"min_quota\":750000,\"max_quota\":1500000,\"weight\":30},{\"min_quota\":1500000,\"max_quota\":2500000,\"weight\":5}]',
+    'checkin_setting.min_interval_hours': 24,
+    'checkin_setting.weekly_reward_cap_quota': 1500000,
+    'checkin_setting.reward_rule': 'highest_eligible',
 
     /* 令牌设置 */
     'token_setting.max_user_tokens': 1000,

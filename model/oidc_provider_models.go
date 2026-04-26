@@ -514,6 +514,32 @@ func ValidateOIDCClientSecret(clientID, secret string) (*OIDCClient, error) {
 	return client, nil
 }
 
+func RotateOIDCClientSecret(clientID string) (*OIDCClient, string, error) {
+	cleanID := strings.TrimSpace(clientID)
+	if cleanID == "" {
+		return nil, "", errors.New("client id is required")
+	}
+
+	client, err := GetOIDCClientByClientID(cleanID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	plainSecret, err := generateOIDCClientSecret()
+	if err != nil {
+		return nil, "", err
+	}
+
+	updates := map[string]any{
+		"client_secret_hash": hashOIDCValue(plainSecret),
+	}
+	if err = DB.Model(&OIDCClient{}).Where("id = ?", client.Id).Updates(updates).Error; err != nil {
+		return nil, "", err
+	}
+	client.ClientSecretHash = updates["client_secret_hash"].(string)
+	return client, plainSecret, nil
+}
+
 func CreateAuthorizationCode(input *CreateAuthorizationCodeInput) (string, error) {
 	if input == nil {
 		return "", errors.New("create authorization code input is nil")

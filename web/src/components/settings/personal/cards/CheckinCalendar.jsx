@@ -46,11 +46,35 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
   const [turnstileWidgetKey, setTurnstileWidgetKey] = useState(0);
   const [checkinData, setCheckinData] = useState({
     enabled: false,
+    min_interval_hours: 24,
+    weekly_reward_cap_quota: 0,
+    remaining_cooldown_seconds: 0,
+    next_checkin_at: 0,
+    tiers: [],
+    eligibility: {
+      can_checkin: false,
+      current_quota: 0,
+      current_tier: 'none',
+      current_tier_name: '',
+      current_tier_max_balance_quota: 0,
+      reward_min_quota: 0,
+      reward_max_quota: 0,
+      next_tier: '',
+      next_tier_name: '',
+      next_tier_min_balance_quota: 0,
+      weekly_reward_cap_quota: 0,
+      weekly_reward_awarded_quota: 0,
+      weekly_reward_remaining_quota: 0,
+      lock_reason: '',
+    },
     stats: {
       checked_in_today: false,
       total_checkins: 0,
       total_quota: 0,
       checkin_count: 0,
+      weekly_quota_awarded: 0,
+      weekly_reward_cap_quota: 0,
+      weekly_reward_remaining_quota: 0,
       records: [],
     },
   });
@@ -80,6 +104,79 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
       0,
     );
   }, [checkinData.stats?.records]);
+
+  const eligibility = checkinData.eligibility || {};
+  const canCheckinByEligibility = Boolean(eligibility.can_checkin);
+  const isCheckedInToday = Boolean(checkinData.stats?.checked_in_today);
+  const remainingCooldownSeconds = Number(checkinData.remaining_cooldown_seconds || 0);
+  const isCooldownActive = remainingCooldownSeconds > 0;
+  const canCheckinNow =
+    initialLoaded &&
+    canCheckinByEligibility &&
+    !isCheckedInToday &&
+    !isCooldownActive;
+  const rewardRangeText =
+    eligibility.reward_max_quota >= eligibility.reward_min_quota
+      ? `${renderQuota(eligibility.reward_min_quota || 0)} ~ ${renderQuota(eligibility.reward_max_quota || 0)}`
+      : '--';
+  const weeklyCapQuota = Number(eligibility.weekly_reward_cap_quota || 0);
+  const weeklyAwardedQuota = Number(eligibility.weekly_reward_awarded_quota || 0);
+  const weeklyRemainingQuota = Number(eligibility.weekly_reward_remaining_quota || 0);
+
+  const formatCooldown = (seconds) => {
+    const sec = Number(seconds || 0);
+    if (sec <= 0) return '';
+    const hours = Math.floor(sec / 3600);
+    const minutes = Math.floor((sec % 3600) / 60);
+    if (hours > 0) return `${hours}${t('小时')}${minutes}${t('分钟')}`;
+    if (minutes > 0) return `${minutes}${t('分钟')}`;
+    return `${sec}${t('秒')}`;
+  };
+
+  const renderTierRewardBands = (tier) => {
+    const bands = Array.isArray(tier.reward_bands) ? tier.reward_bands : [];
+    if (!bands.length) {
+      return null;
+    }
+    const totalWeight = bands.reduce(
+      (sum, band) => sum + (Number(band.weight) || 0),
+      0,
+    );
+    if (!totalWeight) {
+      return null;
+    }
+
+    return (
+      <div className='mt-2 space-y-1.5'>
+        <div className='text-[11px] text-gray-500'>{t('概率分布')}</div>
+        {bands.map((band, index) => {
+          const weight = Number(band.weight) || 0;
+          const percent = (weight * 100) / totalWeight;
+          return (
+            <div key={`${tier.tier}-band-${index}`} className='space-y-0.5'>
+              <div className='flex justify-between text-[11px] text-gray-500 dark:text-gray-300'>
+                <span>
+                  {renderQuota(band.min_quota || 0)} ~{' '}
+                  {renderQuota(band.max_quota || 0)}
+                </span>
+                <span>{percent.toFixed(2)}%</span>
+              </div>
+              <div className='w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden'>
+                <div
+                  className={`h-full rounded-full ${
+                    tier.tier === 'advanced'
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                  }`}
+                  style={{ width: `${Math.max(percent, 2)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   // 获取签到状态
   const fetchCheckinStatus = async (month) => {
@@ -261,12 +358,48 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
             <div className='text-xs text-gray-500 dark:text-gray-400'>
               {!initialLoaded
                 ? t('正在加载签到状态...')
-                : checkinData.stats?.checked_in_today
+                : isCheckedInToday
                   ? t('今日已签到，累计签到') +
                     ` ${checkinData.stats?.total_checkins || 0} ` +
                     t('天')
-                  : t('每日签到可获得随机额度奖励')}
+                  : isCooldownActive
+                    ? t('签到冷却中，还需') +
+                      ` ${formatCooldown(remainingCooldownSeconds)}`
+                  : !canCheckinByEligibility
+                    ? eligibility.lock_reason || t('余额不足，暂未解锁签到')
+                    : t('当前等级') +
+                      ` ${eligibility.current_tier_name || '-'}，` +
+                      t('奖励范围') +
+                      ` ${rewardRangeText}`
+              }
             </div>
+            {initialLoaded && canCheckinByEligibility && (
+              <div className='text-xs text-green-600 dark:text-green-400 mt-0.5'>
+                {t('当前等级')}：{eligibility.current_tier_name || '-'} ·{' '}
+                {t('奖励范围')}：{rewardRangeText}
+              </div>
+            )}
+            {initialLoaded &&
+              !canCheckinByEligibility &&
+              eligibility.next_tier_name &&
+              eligibility.next_tier_min_balance_quota > 0 && (
+                <div className='text-xs text-orange-600 dark:text-orange-400 mt-0.5'>
+                  {t('下一等级')}：{eligibility.next_tier_name}（{t('需达到')}{' '}
+                  {renderQuota(eligibility.next_tier_min_balance_quota)}）
+                </div>
+              )}
+            {initialLoaded && isCooldownActive && (
+              <div className='text-xs text-orange-600 dark:text-orange-400 mt-0.5'>
+                {t('签到冷却中，还需')} {formatCooldown(remainingCooldownSeconds)}
+              </div>
+            )}
+            {initialLoaded && weeklyCapQuota > 0 && (
+              <div className='text-xs text-blue-600 dark:text-blue-400 mt-0.5'>
+                {t('本周奖励')}：{renderQuota(weeklyAwardedQuota || 0)} /{' '}
+                {renderQuota(weeklyCapQuota || 0)}（{t('剩余')}{' '}
+                {renderQuota(weeklyRemainingQuota || 0)}）
+              </div>
+            )}
           </div>
         </div>
         <Button
@@ -275,19 +408,59 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
           icon={<Gift size={16} />}
           onClick={() => doCheckin()}
           loading={checkinLoading || !initialLoaded}
-          disabled={!initialLoaded || checkinData.stats?.checked_in_today}
+          disabled={!canCheckinNow}
           className='!bg-green-600 hover:!bg-green-700'
         >
           {!initialLoaded
             ? t('加载中...')
-            : checkinData.stats?.checked_in_today
+            : isCheckedInToday
               ? t('今日已签到')
-              : t('立即签到')}
+              : isCooldownActive
+                ? t('签到冷却中')
+              : !canCheckinByEligibility
+                ? t('余额未达门槛')
+                : t('立即签到')}
         </Button>
       </div>
 
       {/* 可折叠内容 */}
       <Collapsible isOpen={isCollapsed === false} keepDOM>
+        {/* 签到等级信息 */}
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 mt-4'>
+          {(checkinData.tiers || []).map((tier) => (
+            <div
+              key={tier.tier}
+              className={`rounded-lg border p-3 ${
+                tier.eligible
+                  ? 'border-green-400 bg-green-50 dark:bg-green-950/30'
+                  : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
+              }`}
+            >
+              <div className='text-sm font-semibold mb-1'>
+                {tier.tier_name || tier.tier}
+              </div>
+              <div className='text-xs text-gray-600 dark:text-gray-300'>
+                {t('解锁门槛')}：{renderQuota(tier.min_balance_quota || 0)}
+              </div>
+              <div className='text-xs text-gray-600 dark:text-gray-300'>
+                {t('余额上限')}：{tier.max_balance_quota > 0
+                  ? renderQuota(tier.max_balance_quota)
+                  : t('不限制')}
+              </div>
+              <div className='text-xs text-gray-600 dark:text-gray-300'>
+                {t('奖励范围')}：{renderQuota(tier.reward_min_quota || 0)} ~{' '}
+                {renderQuota(tier.reward_max_quota || 0)}
+              </div>
+              {renderTierRewardBands(tier)}
+              <div
+                className={`text-xs mt-1 ${tier.eligible ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`}
+              >
+                {tier.eligible ? t('已解锁') : t('未解锁')}
+              </div>
+            </div>
+          ))}
+        </div>
+
         {/* 签到统计 */}
         <div className='grid grid-cols-3 gap-3 mb-4 mt-4'>
           <div className='text-center p-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg'>
@@ -373,6 +546,16 @@ const CheckinCalendar = ({ t, status, turnstileEnabled, turnstileSiteKey }) => {
               <li>{t('每日签到可获得随机额度奖励')}</li>
               <li>{t('签到奖励将直接添加到您的账户余额')}</li>
               <li>{t('每日仅可签到一次，请勿重复签到')}</li>
+              <li>{t('当余额超过对应等级上限时，将暂时无法签到')}</li>
+              <li>
+                {t('签到冷却时间')}：{checkinData.min_interval_hours || 0}{' '}
+                {t('小时')}
+              </li>
+              {weeklyCapQuota > 0 && (
+                <li>
+                  {t('本周奖励封顶')}：{renderQuota(weeklyCapQuota)}
+                </li>
+              )}
             </ul>
           </Typography.Text>
         </div>

@@ -185,6 +185,68 @@ func RootAuth() func(c *gin.Context) {
 	}
 }
 
+// AccessTokenOnlyUserAuth 仅使用系统访问令牌进行用户鉴权。
+// 适用于跨站点中控网关场景，不依赖 session，也不要求 New-Api-User 请求头。
+func AccessTokenOnlyUserAuth() func(c *gin.Context) {
+	return func(c *gin.Context) {
+		accessToken := strings.TrimSpace(c.Request.Header.Get("Authorization"))
+		if accessToken == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthNotLoggedIn),
+			})
+			c.Abort()
+			return
+		}
+		if strings.HasPrefix(accessToken, "bearer ") {
+			accessToken = "Bearer " + strings.TrimSpace(accessToken[7:])
+		}
+
+		user, authErr := model.ValidateAccessToken(accessToken)
+		if authErr != nil {
+			if errors.Is(authErr, model.ErrDatabase) {
+				common.SysLog("ValidateAccessToken database error: " + authErr.Error())
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"success": false,
+					"message": common.TranslateMessage(c, i18n.MsgDatabaseError),
+				})
+			} else {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": common.TranslateMessage(c, i18n.MsgAuthAccessTokenInvalid),
+				})
+			}
+			c.Abort()
+			return
+		}
+		if user == nil || !validUserInfo(user.Username, user.Role) {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthAccessTokenInvalid),
+			})
+			c.Abort()
+			return
+		}
+		if user.Status == common.UserStatusDisabled {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthUserBanned),
+			})
+			c.Abort()
+			return
+		}
+
+		c.Set("username", user.Username)
+		c.Set("role", user.Role)
+		c.Set("id", user.Id)
+		c.Set("status", user.Status)
+		c.Set("group", user.Group)
+		c.Set("user_group", user.Group)
+		c.Set("use_access_token", true)
+		c.Next()
+	}
+}
+
 func WssAuth(c *gin.Context) {
 
 }

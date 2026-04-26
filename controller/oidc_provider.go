@@ -579,6 +579,27 @@ func AdminEnableOIDCClient(c *gin.Context) {
 	common.ApiSuccess(c, gin.H{"client_id": clientID, "enabled": true})
 }
 
+func AdminRotateOIDCClientSecret(c *gin.Context) {
+	clientID := strings.TrimSpace(c.Param("client_id"))
+	if clientID == "" {
+		common.ApiErrorMsg(c, "client_id is required")
+		return
+	}
+	client, clientSecret, err := model.RotateOIDCClientSecret(clientID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			common.ApiErrorMsg(c, "client not found")
+			return
+		}
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{
+		"client":        toOIDCClientResponse(client),
+		"client_secret": clientSecret,
+	})
+}
+
 func AdminDeleteOIDCClient(c *gin.Context) {
 	clientID := strings.TrimSpace(c.Param("client_id"))
 	if clientID == "" {
