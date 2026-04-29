@@ -76,21 +76,27 @@ const OperationSetting = () => {
     'monitor_setting.auto_test_channel_enabled': false,
     'monitor_setting.auto_test_channel_minutes': 10 /* 签到设置 */,
     'checkin_setting.enabled': false,
-    'checkin_setting.basic_min_balance_quota': 25000000,
-    'checkin_setting.basic_max_balance_quota': 40000000,
-    'checkin_setting.min_quota': 25000,
-    'checkin_setting.max_quota': 500000,
+    'checkin_setting.entry_min_balance_quota': 10,
+    'checkin_setting.entry_max_balance_quota': 49,
+    'checkin_setting.entry_min_quota': 0.01,
+    'checkin_setting.entry_max_quota': 0.2,
+    'checkin_setting.entry_reward_bands':
+      '[{\"min_quota\":0.01,\"max_quota\":0.05,\"weight\":72},{\"min_quota\":0.05,\"max_quota\":0.12,\"weight\":23},{\"min_quota\":0.12,\"max_quota\":0.2,\"weight\":5}]',
+    'checkin_setting.basic_min_balance_quota': 50,
+    'checkin_setting.basic_max_balance_quota': 85,
+    'checkin_setting.min_quota': 0.05,
+    'checkin_setting.max_quota': 1,
     'checkin_setting.basic_reward_bands':
-      '[{\"min_quota\":25000,\"max_quota\":100000,\"weight\":70},{\"min_quota\":100000,\"max_quota\":300000,\"weight\":25},{\"min_quota\":300000,\"max_quota\":500000,\"weight\":5}]',
+      '[{\"min_quota\":0.05,\"max_quota\":0.2,\"weight\":70},{\"min_quota\":0.2,\"max_quota\":0.6,\"weight\":25},{\"min_quota\":0.6,\"max_quota\":1,\"weight\":5}]',
     'checkin_setting.advanced_enabled': true,
-    'checkin_setting.advanced_min_balance_quota': 50000000,
-    'checkin_setting.advanced_max_balance_quota': 75000000,
-    'checkin_setting.advanced_min_quota': 250000,
-    'checkin_setting.advanced_max_quota': 2500000,
+    'checkin_setting.advanced_min_balance_quota': 100,
+    'checkin_setting.advanced_max_balance_quota': 150,
+    'checkin_setting.advanced_min_quota': 0.5,
+    'checkin_setting.advanced_max_quota': 5,
     'checkin_setting.advanced_reward_bands':
-      '[{\"min_quota\":250000,\"max_quota\":750000,\"weight\":65},{\"min_quota\":750000,\"max_quota\":1500000,\"weight\":30},{\"min_quota\":1500000,\"max_quota\":2500000,\"weight\":5}]',
+      '[{\"min_quota\":0.5,\"max_quota\":1.5,\"weight\":65},{\"min_quota\":1.5,\"max_quota\":3,\"weight\":30},{\"min_quota\":3,\"max_quota\":5,\"weight\":5}]',
     'checkin_setting.min_interval_hours': 24,
-    'checkin_setting.weekly_reward_cap_quota': 1500000,
+    'checkin_setting.weekly_reward_cap_quota': 3,
     'checkin_setting.reward_rule': 'highest_eligible',
 
     /* 令牌设置 */
@@ -165,9 +171,11 @@ const OperationSetting = () => {
           <SettingsCreditLimit options={inputs} refresh={onRefresh} />
         </Card>
         {/* 签到设置 */}
-        <Card style={{ marginTop: '10px' }}>
-          <SettingsCheckin options={inputs} refresh={onRefresh} />
-        </Card>
+        <div id='quick-anchor-checkin-setting' style={{ marginTop: '10px' }}>
+          <Card>
+            <SettingsCheckin options={inputs} refresh={onRefresh} />
+          </Card>
+        </div>
       </Spin>
     </>
   );

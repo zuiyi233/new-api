@@ -11,6 +11,7 @@ import (
 
 const (
 	CheckinTierBasic    = "basic"
+	CheckinTierMedium   = "medium"
 	CheckinTierAdvanced = "advanced"
 
 	CheckinRewardRuleHighestEligible = "highest_eligible"
@@ -28,12 +29,19 @@ type CheckinRewardBand struct {
 type CheckinSetting struct {
 	Enabled bool `json:"enabled"` // 是否启用签到功能
 
-	// 基础签到（兼容历史字段 min_quota/max_quota）
-	BasicMinBalanceQuota int                 `json:"basic_min_balance_quota"` // 基础签到解锁余额门槛
-	BasicMaxBalanceQuota int                 `json:"basic_max_balance_quota"` // 基础签到余额上限（0 表示不限制）
-	MinQuota             int                 `json:"min_quota"`               // 基础签到最小奖励
-	MaxQuota             int                 `json:"max_quota"`               // 基础签到最大奖励
-	BasicRewardBands     []CheckinRewardBand `json:"basic_reward_bands"`      // 基础签到概率分布
+	// 基础签到（低门槛档）
+	EntryMinBalanceQuota int                 `json:"entry_min_balance_quota"` // 基础签到解锁余额门槛
+	EntryMaxBalanceQuota int                 `json:"entry_max_balance_quota"` // 基础签到余额上限（0 表示不限制）
+	EntryMinQuota        int                 `json:"entry_min_quota"`         // 基础签到最小奖励
+	EntryMaxQuota        int                 `json:"entry_max_quota"`         // 基础签到最大奖励
+	EntryRewardBands     []CheckinRewardBand `json:"entry_reward_bands"`      // 基础签到概率分布
+
+	// 中级签到（兼容历史字段 basic_*/min_quota/max_quota）
+	BasicMinBalanceQuota int                 `json:"basic_min_balance_quota"` // 中级签到解锁余额门槛
+	BasicMaxBalanceQuota int                 `json:"basic_max_balance_quota"` // 中级签到余额上限（0 表示不限制）
+	MinQuota             int                 `json:"min_quota"`               // 中级签到最小奖励
+	MaxQuota             int                 `json:"max_quota"`               // 中级签到最大奖励
+	BasicRewardBands     []CheckinRewardBand `json:"basic_reward_bands"`      // 中级签到概率分布
 
 	// 高级签到
 	AdvancedEnabled         bool                `json:"advanced_enabled"`           // 是否启用高级签到
@@ -50,6 +58,26 @@ type CheckinSetting struct {
 
 	// 奖励发放规则：highest_eligible / lowest_eligible
 	RewardRule string `json:"reward_rule"`
+}
+
+func defaultEntryRewardBands() []CheckinRewardBand {
+	return []CheckinRewardBand{
+		{
+			MinQuota: int(0.01 * common.QuotaPerUnit),
+			MaxQuota: int(0.05 * common.QuotaPerUnit),
+			Weight:   72,
+		},
+		{
+			MinQuota: int(0.05 * common.QuotaPerUnit),
+			MaxQuota: int(0.12 * common.QuotaPerUnit),
+			Weight:   23,
+		},
+		{
+			MinQuota: int(0.12 * common.QuotaPerUnit),
+			MaxQuota: int(0.2 * common.QuotaPerUnit),
+			Weight:   5,
+		},
+	}
 }
 
 func defaultBasicRewardBands() []CheckinRewardBand {
@@ -93,14 +121,21 @@ func defaultAdvancedRewardBands() []CheckinRewardBand {
 }
 
 // 默认配置：
-// - 基础签到：余额达到 50 才可签到，奖励 0.05 - 1.00
+// - 基础签到：余额达到 10 才可签到，奖励 0.01 - 0.20
+// - 中级签到：余额达到 50 才可签到，奖励 0.05 - 1.00（兼容历史基础档）
 // - 高级签到：余额达到 100 才可签到，奖励 0.50 - 5.00
 // 数值按系统额度单位（quota）存储。
 var checkinSetting = CheckinSetting{
 	Enabled: false,
 
+	EntryMinBalanceQuota: int(10 * common.QuotaPerUnit),
+	EntryMaxBalanceQuota: int(49 * common.QuotaPerUnit),
+	EntryMinQuota:        int(0.01 * common.QuotaPerUnit),
+	EntryMaxQuota:        int(0.2 * common.QuotaPerUnit),
+	EntryRewardBands:     defaultEntryRewardBands(),
+
 	BasicMinBalanceQuota: int(50 * common.QuotaPerUnit),
-	BasicMaxBalanceQuota: int(80 * common.QuotaPerUnit),
+	BasicMaxBalanceQuota: int(85 * common.QuotaPerUnit),
 	MinQuota:             int(0.05 * common.QuotaPerUnit),
 	MaxQuota:             int(1 * common.QuotaPerUnit),
 	BasicRewardBands:     defaultBasicRewardBands(),
@@ -253,9 +288,13 @@ func GetRewardBandsByTier(setting CheckinSetting, tier string) []CheckinRewardBa
 		bands := make([]CheckinRewardBand, len(setting.AdvancedRewardBands))
 		copy(bands, setting.AdvancedRewardBands)
 		return bands
-	default:
+	case CheckinTierMedium:
 		bands := make([]CheckinRewardBand, len(setting.BasicRewardBands))
 		copy(bands, setting.BasicRewardBands)
+		return bands
+	default:
+		bands := make([]CheckinRewardBand, len(setting.EntryRewardBands))
+		copy(bands, setting.EntryRewardBands)
 		return bands
 	}
 }
@@ -266,7 +305,24 @@ func normalizeCheckinSetting(raw *CheckinSetting) CheckinSetting {
 	}
 	normalized := *raw
 
-	normalized.BasicMinBalanceQuota = common.Max(normalized.BasicMinBalanceQuota, 0)
+	normalized.EntryMinBalanceQuota = common.Max(normalized.EntryMinBalanceQuota, 0)
+	normalized.EntryMaxBalanceQuota = common.Max(normalized.EntryMaxBalanceQuota, 0)
+	if normalized.EntryMaxBalanceQuota > 0 && normalized.EntryMaxBalanceQuota < normalized.EntryMinBalanceQuota {
+		normalized.EntryMaxBalanceQuota = normalized.EntryMinBalanceQuota
+	}
+	normalized.EntryMinQuota = common.Max(normalized.EntryMinQuota, 0)
+	normalized.EntryMaxQuota = common.Max(normalized.EntryMaxQuota, 0)
+	if normalized.EntryMaxQuota < normalized.EntryMinQuota {
+		normalized.EntryMaxQuota = normalized.EntryMinQuota
+	}
+	normalized.EntryRewardBands = normalizeRewardBands(
+		normalized.EntryRewardBands,
+		normalized.EntryMinQuota,
+		normalized.EntryMaxQuota,
+		defaultEntryRewardBands(),
+	)
+
+	normalized.BasicMinBalanceQuota = common.Max(normalized.BasicMinBalanceQuota, normalized.EntryMinBalanceQuota)
 	normalized.BasicMaxBalanceQuota = common.Max(normalized.BasicMaxBalanceQuota, 0)
 	if normalized.BasicMaxBalanceQuota > 0 && normalized.BasicMaxBalanceQuota < normalized.BasicMinBalanceQuota {
 		normalized.BasicMaxBalanceQuota = normalized.BasicMinBalanceQuota

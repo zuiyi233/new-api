@@ -1431,7 +1431,9 @@ const SystemSetting = () => {
                 </Form.Section>
               </Card>
               <OIDCSigningKeySetting />
-              <OIDCHubClientSetting serverAddress={inputs.ServerAddress} />
+              <div id='quick-anchor-third-party-access'>
+                <OIDCHubClientSetting serverAddress={inputs.ServerAddress} />
+              </div>
 
               <Card>
                 <Form.Section text={t('配置 GitHub OAuth App')}>

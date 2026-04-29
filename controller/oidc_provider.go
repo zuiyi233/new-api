@@ -239,33 +239,37 @@ func OIDCToken(c *gin.Context) {
 	clientID, clientSecret, authMethod, err := parseOAuthClientCredentials(c)
 	if err != nil {
 		writeOAuthError(c, http.StatusUnauthorized, "invalid_client", err.Error())
+		logOIDCAudit(c, "token", "", 0, "failed", fmt.Sprintf("client credential parse failed: %s", err.Error()))
 		return
 	}
 
 	client, err := model.GetOIDCClientByClientID(clientID)
 	if err != nil {
 		writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "unknown client")
-		logOIDCAudit(c, "token", clientID, 0, "failed", "unknown client")
+		logOIDCAudit(c, "token", clientID, 0, "failed", fmt.Sprintf("unknown client (auth_method=%s)", authMethod))
 		return
 	}
 	if !client.Enabled {
 		writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "client is disabled")
-		logOIDCAudit(c, "token", clientID, 0, "failed", "client disabled")
+		logOIDCAudit(c, "token", clientID, 0, "failed", fmt.Sprintf("client disabled (auth_method=%s)", authMethod))
 		return
 	}
 
 	if strings.EqualFold(client.ClientType, oidcClientTypePublic) {
 		if authMethod != "none" && clientSecret != "" {
 			writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "public client must not use client_secret")
+			logOIDCAudit(c, "token", clientID, 0, "failed", fmt.Sprintf("public client with forbidden secret (auth_method=%s)", authMethod))
 			return
 		}
 	} else {
 		if clientSecret == "" {
 			writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "client authentication required")
+			logOIDCAudit(c, "token", clientID, 0, "failed", fmt.Sprintf("missing client_secret (auth_method=%s)", authMethod))
 			return
 		}
 		if _, err = model.ValidateOIDCClientSecret(clientID, clientSecret); err != nil {
 			writeOAuthError(c, http.StatusUnauthorized, "invalid_client", "invalid client credentials")
+			logOIDCAudit(c, "token", clientID, 0, "failed", fmt.Sprintf("client secret mismatch (auth_method=%s): %s", authMethod, err.Error()))
 			return
 		}
 	}
@@ -666,7 +670,7 @@ func oidcTokenByAuthorizationCode(c *gin.Context, client *model.OIDCClient) {
 	authorizationCode, err := model.ConsumeAuthorizationCode(code, client.ClientID, redirectURI)
 	if err != nil {
 		writeOAuthError(c, http.StatusBadRequest, "invalid_grant", "invalid authorization code")
-		logOIDCAudit(c, "token", client.ClientID, 0, "failed", "invalid authorization code")
+		logOIDCAudit(c, "token", client.ClientID, 0, "failed", fmt.Sprintf("invalid authorization code: %s", err.Error()))
 		return
 	}
 
@@ -1142,6 +1146,10 @@ func getOIDCIssuer(c *gin.Context) string {
 
 func buildOIDCUserInfo(user *model.User) gin.H {
 	picture := ""
+	remainQuota := user.Quota
+	if remainQuota < 0 {
+		remainQuota = 0
+	}
 	return gin.H{
 		"sub":                strconv.Itoa(user.Id),
 		"preferred_username": user.Username,
@@ -1151,6 +1159,10 @@ func buildOIDCUserInfo(user *model.User) gin.H {
 		"id":                 strconv.Itoa(user.Id),
 		"username":           user.Username,
 		"avatar":             picture,
+		"quota":              user.Quota,
+		"used_quota":         user.UsedQuota,
+		"remain_quota":       remainQuota,
+		"balance":            remainQuota,
 	}
 }
 

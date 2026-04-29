@@ -100,6 +100,8 @@ func getTierDisplayName(tier string) string {
 	switch tier {
 	case operation_setting.CheckinTierAdvanced:
 		return "高级签到"
+	case operation_setting.CheckinTierMedium:
+		return "中级签到"
 	case operation_setting.CheckinTierBasic:
 		return "基础签到"
 	default:
@@ -113,11 +115,21 @@ func buildCheckinTierPolicies(setting operation_setting.CheckinSetting) []Checki
 			Tier:            operation_setting.CheckinTierBasic,
 			TierName:        getTierDisplayName(operation_setting.CheckinTierBasic),
 			Enabled:         true,
+			MinBalanceQuota: setting.EntryMinBalanceQuota,
+			MaxBalanceQuota: setting.EntryMaxBalanceQuota,
+			RewardMinQuota:  setting.EntryMinQuota,
+			RewardMaxQuota:  setting.EntryMaxQuota,
+			RewardBands:     operation_setting.GetRewardBandsByTier(setting, operation_setting.CheckinTierBasic),
+		},
+		{
+			Tier:            operation_setting.CheckinTierMedium,
+			TierName:        getTierDisplayName(operation_setting.CheckinTierMedium),
+			Enabled:         true,
 			MinBalanceQuota: setting.BasicMinBalanceQuota,
 			MaxBalanceQuota: setting.BasicMaxBalanceQuota,
 			RewardMinQuota:  setting.MinQuota,
 			RewardMaxQuota:  setting.MaxQuota,
-			RewardBands:     operation_setting.GetRewardBandsByTier(setting, operation_setting.CheckinTierBasic),
+			RewardBands:     operation_setting.GetRewardBandsByTier(setting, operation_setting.CheckinTierMedium),
 		},
 	}
 

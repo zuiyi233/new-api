@@ -11,6 +11,23 @@ func newTestCheckinSetting() operation_setting.CheckinSetting {
 	return operation_setting.CheckinSetting{
 		Enabled: true,
 
+		EntryMinBalanceQuota: int(10 * common.QuotaPerUnit),
+		EntryMaxBalanceQuota: int(49 * common.QuotaPerUnit),
+		EntryMinQuota:        int(0.01 * common.QuotaPerUnit),
+		EntryMaxQuota:        int(0.2 * common.QuotaPerUnit),
+		EntryRewardBands: []operation_setting.CheckinRewardBand{
+			{
+				MinQuota: int(0.01 * common.QuotaPerUnit),
+				MaxQuota: int(0.05 * common.QuotaPerUnit),
+				Weight:   75,
+			},
+			{
+				MinQuota: int(0.05 * common.QuotaPerUnit),
+				MaxQuota: int(0.2 * common.QuotaPerUnit),
+				Weight:   25,
+			},
+		},
+
 		BasicMinBalanceQuota: int(50 * common.QuotaPerUnit),
 		BasicMaxBalanceQuota: int(80 * common.QuotaPerUnit),
 		MinQuota:             int(0.05 * common.QuotaPerUnit),
@@ -54,7 +71,7 @@ func newTestCheckinSetting() operation_setting.CheckinSetting {
 
 func TestBuildUserCheckinEligibilityLocked(t *testing.T) {
 	setting := newTestCheckinSetting()
-	_, eligibility := buildUserCheckinEligibility(int(20*common.QuotaPerUnit), setting)
+	_, eligibility := buildUserCheckinEligibility(int(5*common.QuotaPerUnit), setting)
 
 	if eligibility.CanCheckin {
 		t.Fatalf("expected locked eligibility, got can_checkin=true")
@@ -62,14 +79,14 @@ func TestBuildUserCheckinEligibilityLocked(t *testing.T) {
 	if eligibility.NextTier != operation_setting.CheckinTierBasic {
 		t.Fatalf("expected next tier basic, got %s", eligibility.NextTier)
 	}
-	if eligibility.NextTierMinBalanceQuota != setting.BasicMinBalanceQuota {
-		t.Fatalf("expected next tier threshold %d, got %d", setting.BasicMinBalanceQuota, eligibility.NextTierMinBalanceQuota)
+	if eligibility.NextTierMinBalanceQuota != setting.EntryMinBalanceQuota {
+		t.Fatalf("expected next tier threshold %d, got %d", setting.EntryMinBalanceQuota, eligibility.NextTierMinBalanceQuota)
 	}
 }
 
 func TestBuildUserCheckinEligibilityBasic(t *testing.T) {
 	setting := newTestCheckinSetting()
-	_, eligibility := buildUserCheckinEligibility(setting.BasicMinBalanceQuota, setting)
+	_, eligibility := buildUserCheckinEligibility(setting.EntryMinBalanceQuota, setting)
 
 	if !eligibility.CanCheckin {
 		t.Fatalf("expected can_checkin=true")
@@ -77,8 +94,24 @@ func TestBuildUserCheckinEligibilityBasic(t *testing.T) {
 	if eligibility.CurrentTier != operation_setting.CheckinTierBasic {
 		t.Fatalf("expected basic tier, got %s", eligibility.CurrentTier)
 	}
-	if eligibility.RewardMinQuota != setting.MinQuota || eligibility.RewardMaxQuota != setting.MaxQuota {
+	if eligibility.RewardMinQuota != setting.EntryMinQuota || eligibility.RewardMaxQuota != setting.EntryMaxQuota {
 		t.Fatalf("expected basic reward range [%d, %d], got [%d, %d]",
+			setting.EntryMinQuota, setting.EntryMaxQuota, eligibility.RewardMinQuota, eligibility.RewardMaxQuota)
+	}
+}
+
+func TestBuildUserCheckinEligibilityMedium(t *testing.T) {
+	setting := newTestCheckinSetting()
+	_, eligibility := buildUserCheckinEligibility(setting.BasicMinBalanceQuota, setting)
+
+	if !eligibility.CanCheckin {
+		t.Fatalf("expected can_checkin=true")
+	}
+	if eligibility.CurrentTier != operation_setting.CheckinTierMedium {
+		t.Fatalf("expected medium tier, got %s", eligibility.CurrentTier)
+	}
+	if eligibility.RewardMinQuota != setting.MinQuota || eligibility.RewardMaxQuota != setting.MaxQuota {
+		t.Fatalf("expected medium reward range [%d, %d], got [%d, %d]",
 			setting.MinQuota, setting.MaxQuota, eligibility.RewardMinQuota, eligibility.RewardMaxQuota)
 	}
 }
@@ -101,6 +134,7 @@ func TestBuildUserCheckinEligibilityAdvancedWithHighestRule(t *testing.T) {
 
 func TestBuildUserCheckinEligibilityAdvancedWithLowestRule(t *testing.T) {
 	setting := newTestCheckinSetting()
+	setting.EntryMaxBalanceQuota = setting.AdvancedMinBalanceQuota
 	setting.BasicMaxBalanceQuota = setting.AdvancedMinBalanceQuota
 	setting.RewardRule = operation_setting.CheckinRewardRuleLowestEligible
 	_, eligibility := buildUserCheckinEligibility(setting.AdvancedMinBalanceQuota, setting)

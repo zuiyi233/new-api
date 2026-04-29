@@ -18,7 +18,16 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useEffect, useState } from 'react';
-import { Layout, TabPane, Tabs } from '@douyinfe/semi-ui';
+import {
+  Button,
+  Card,
+  Empty,
+  Layout,
+  Space,
+  TabPane,
+  Tabs,
+  Typography,
+} from '@douyinfe/semi-ui';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -50,14 +59,39 @@ import PaymentSetting from '../../components/settings/PaymentSetting';
 import ModelDeploymentSetting from '../../components/settings/ModelDeploymentSetting';
 import PerformanceSetting from '../../components/settings/PerformanceSetting';
 
+const SETTING_QUICK_ANCHOR = {
+  thirdPartyAccess: {
+    tabKey: 'system',
+    elementId: 'quick-anchor-third-party-access',
+  },
+  checkin: {
+    tabKey: 'operation',
+    elementId: 'quick-anchor-checkin-setting',
+  },
+};
+
 const Setting = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [tabActiveKey, setTabActiveKey] = useState('1');
+  const canAccessSettings = isRoot();
+  const currentUserRole = (() => {
+    const rawUser = localStorage.getItem('user');
+    if (!rawUser) return '';
+    try {
+      const parsed = JSON.parse(rawUser);
+      if (typeof parsed?.role === 'number') {
+        return parsed.role;
+      }
+      return '';
+    } catch (error) {
+      return '';
+    }
+  })();
   let panes = [];
 
-  if (isRoot()) {
+  if (canAccessSettings) {
     panes.push({
       tab: (
         <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -183,7 +217,30 @@ const Setting = () => {
     setTabActiveKey(key);
     navigate(`?tab=${key}`);
   };
+
+  const scrollToAnchorById = (elementId, retries = 0) => {
+    if (!elementId) return;
+    const target = document.getElementById(elementId);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (retries >= 20) return;
+    window.setTimeout(() => scrollToAnchorById(elementId, retries + 1), 80);
+  };
+
+  const jumpToSection = (target) => {
+    if (!target) return;
+    const { tabKey, elementId } = target;
+    if (!tabKey || !elementId) return;
+    onChangeTab(tabKey);
+    window.setTimeout(() => scrollToAnchorById(elementId), 80);
+  };
+
   useEffect(() => {
+    if (!canAccessSettings) {
+      return;
+    }
     const searchParams = new URLSearchParams(window.location.search);
     const tab = searchParams.get('tab');
     if (tab) {
@@ -191,11 +248,56 @@ const Setting = () => {
     } else {
       onChangeTab('operation');
     }
-  }, [location.search]);
+  }, [canAccessSettings, location.search]);
+
+  if (!canAccessSettings) {
+    return (
+      <div className='mt-[60px] px-2'>
+        <Layout>
+          <Layout.Content>
+            <Empty
+              title={t('暂无权限访问设置页')}
+              description={
+                <Typography.Text type='secondary'>
+                  {t('当前账号仅支持 root（role >= 100）访问设置页面，请切换 root 账号后重试。')}
+                  {currentUserRole !== '' ? `（role=${currentUserRole}）` : ''}
+                </Typography.Text>
+              }
+            />
+          </Layout.Content>
+        </Layout>
+      </div>
+    );
+  }
+
   return (
     <div className='mt-[60px] px-2'>
       <Layout>
         <Layout.Content>
+          <Card style={{ marginBottom: '10px' }}>
+            <Space wrap align='center'>
+              <Typography.Text type='secondary'>
+                {t('快捷定位')}
+              </Typography.Text>
+              <Button
+                theme='solid'
+                type='primary'
+                onClick={() =>
+                  jumpToSection(SETTING_QUICK_ANCHOR.thirdPartyAccess)
+                }
+              >
+                {t('跳转第三方接入')}
+              </Button>
+              <Button
+                theme='outline'
+                type='tertiary'
+                onClick={() => jumpToSection(SETTING_QUICK_ANCHOR.checkin)}
+              >
+                {t('跳转签到设置')}
+              </Button>
+            </Space>
+          </Card>
+
           <Tabs
             type='card'
             collapsible

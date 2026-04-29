@@ -36,7 +36,13 @@ const OIDCSigningKeySetting = () => {
     const raw = localStorage.getItem('user');
     if (!raw) return '';
     try {
-      return JSON.parse(raw)?.token || '';
+      const parsed = JSON.parse(raw) || {};
+      return (
+        parsed?.token ||
+        parsed?.access_token ||
+        parsed?.system_access_token ||
+        ''
+      );
     } catch (error) {
       return '';
     }
@@ -44,9 +50,7 @@ const OIDCSigningKeySetting = () => {
 
   const buildAdminHeaders = () => {
     const token = getAdminToken();
-    if (!token) {
-      throw new Error(t('未找到管理员令牌，请重新登录后重试'));
-    }
+    if (!token) return {};
     return {
       'X-Admin-Token': token,
     };

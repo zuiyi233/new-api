@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,6 +28,158 @@ var completionRatioMetaOptionKeys = []string{
 	"ImageRatio",
 	"AudioRatio",
 	"AudioCompletionRatio",
+}
+
+var checkinQuotaAmountOptionKeys = map[string]struct{}{
+	"checkin_setting.entry_min_balance_quota":    {},
+	"checkin_setting.entry_max_balance_quota":    {},
+	"checkin_setting.entry_min_quota":            {},
+	"checkin_setting.entry_max_quota":            {},
+	"checkin_setting.min_quota":                  {},
+	"checkin_setting.max_quota":                  {},
+	"checkin_setting.basic_min_balance_quota":    {},
+	"checkin_setting.basic_max_balance_quota":    {},
+	"checkin_setting.advanced_min_balance_quota": {},
+	"checkin_setting.advanced_max_balance_quota": {},
+	"checkin_setting.advanced_min_quota":         {},
+	"checkin_setting.advanced_max_quota":         {},
+	"checkin_setting.weekly_reward_cap_quota":    {},
+}
+
+type checkinRewardBandAmount struct {
+	MinQuota float64 `json:"min_quota"`
+	MaxQuota float64 `json:"max_quota"`
+	Weight   int     `json:"weight"`
+}
+
+func isCheckinQuotaAmountOptionKey(key string) bool {
+	_, ok := checkinQuotaAmountOptionKeys[key]
+	return ok
+}
+
+func amountToQuotaValue(amount float64) int {
+	if math.IsNaN(amount) || math.IsInf(amount, 0) || amount <= 0 {
+		return 0
+	}
+	quota := math.Round(amount * common.QuotaPerUnit)
+	if quota <= 0 {
+		return 0
+	}
+	return int(quota)
+}
+
+func looksLikeLegacyQuotaValue(value float64) bool {
+	return value > 10000
+}
+
+func quotaToAmountValue(quota float64) float64 {
+	if math.IsNaN(quota) || math.IsInf(quota, 0) || quota <= 0 {
+		return 0
+	}
+	if common.QuotaPerUnit <= 0 {
+		return quota
+	}
+	amount := quota / common.QuotaPerUnit
+	return math.Round(amount*10000) / 10000
+}
+
+func normalizeAmountString(value float64) string {
+	return strconv.FormatFloat(value, 'f', -1, 64)
+}
+
+func convertCheckinOptionValueForDisplay(key string, rawValue string) (string, error) {
+	switch key {
+	case "checkin_setting.entry_reward_bands",
+		"checkin_setting.basic_reward_bands",
+		"checkin_setting.advanced_reward_bands":
+		var bands []operation_setting.CheckinRewardBand
+		if err := common.UnmarshalJsonStr(rawValue, &bands); err != nil {
+			return "", err
+		}
+		amountBands := make([]checkinRewardBandAmount, 0, len(bands))
+		for i := range bands {
+			amountBands = append(amountBands, checkinRewardBandAmount{
+				MinQuota: quotaToAmountValue(float64(bands[i].MinQuota)),
+				MaxQuota: quotaToAmountValue(float64(bands[i].MaxQuota)),
+				Weight:   bands[i].Weight,
+			})
+		}
+		payload, err := common.Marshal(amountBands)
+		if err != nil {
+			return "", err
+		}
+		return string(payload), nil
+	default:
+		if !isCheckinQuotaAmountOptionKey(key) {
+			return rawValue, nil
+		}
+		quotaValue, err := strconv.ParseFloat(rawValue, 64)
+		if err != nil {
+			return "", err
+		}
+		amountValue := quotaToAmountValue(quotaValue)
+		return normalizeAmountString(amountValue), nil
+	}
+}
+
+func convertCheckinOptionValueToStorage(key string, displayValue string) (string, error) {
+	switch key {
+	case "checkin_setting.entry_reward_bands",
+		"checkin_setting.basic_reward_bands",
+		"checkin_setting.advanced_reward_bands":
+		var amountBands []checkinRewardBandAmount
+		if err := common.UnmarshalJsonStr(displayValue, &amountBands); err != nil {
+			var quotaBands []operation_setting.CheckinRewardBand
+			// 兼容旧客户端直接传 quota 的情况
+			if legacyErr := common.UnmarshalJsonStr(displayValue, &quotaBands); legacyErr == nil {
+				payload, marshalErr := common.Marshal(quotaBands)
+				if marshalErr != nil {
+					return "", marshalErr
+				}
+				return string(payload), nil
+			}
+			return "", err
+		}
+		quotaBands := make([]operation_setting.CheckinRewardBand, 0, len(amountBands))
+		useLegacyQuota := false
+		for i := range amountBands {
+			if looksLikeLegacyQuotaValue(amountBands[i].MinQuota) || looksLikeLegacyQuotaValue(amountBands[i].MaxQuota) {
+				useLegacyQuota = true
+				break
+			}
+		}
+		for i := range amountBands {
+			minQuota := amountToQuotaValue(amountBands[i].MinQuota)
+			maxQuota := amountToQuotaValue(amountBands[i].MaxQuota)
+			if useLegacyQuota {
+				minQuota = int(math.Round(amountBands[i].MinQuota))
+				maxQuota = int(math.Round(amountBands[i].MaxQuota))
+			}
+			quotaBands = append(quotaBands, operation_setting.CheckinRewardBand{
+				MinQuota: minQuota,
+				MaxQuota: maxQuota,
+				Weight:   amountBands[i].Weight,
+			})
+		}
+		payload, err := common.Marshal(quotaBands)
+		if err != nil {
+			return "", err
+		}
+		return string(payload), nil
+	default:
+		if !isCheckinQuotaAmountOptionKey(key) {
+			return displayValue, nil
+		}
+		amountValue, err := strconv.ParseFloat(displayValue, 64)
+		if err != nil {
+			return "", err
+		}
+		if looksLikeLegacyQuotaValue(amountValue) {
+			return strconv.Itoa(int(math.Round(amountValue))), nil
+		}
+		quotaValue := amountToQuotaValue(amountValue)
+		return strconv.Itoa(quotaValue), nil
+	}
 }
 
 func isVisiblePublicKeyOption(key string) bool {
@@ -109,7 +262,11 @@ func validateCheckinOptionValue(key string, value string) error {
 			return fmt.Errorf("签到配置 %s 需要为布尔值", key)
 		}
 		candidate.AdvancedEnabled = enabled
-	case "checkin_setting.min_quota",
+	case "checkin_setting.entry_min_balance_quota",
+		"checkin_setting.entry_max_balance_quota",
+		"checkin_setting.entry_min_quota",
+		"checkin_setting.entry_max_quota",
+		"checkin_setting.min_quota",
 		"checkin_setting.max_quota",
 		"checkin_setting.basic_min_balance_quota",
 		"checkin_setting.basic_max_balance_quota",
@@ -123,6 +280,14 @@ func validateCheckinOptionValue(key string, value string) error {
 			return err
 		}
 		switch key {
+		case "checkin_setting.entry_min_balance_quota":
+			candidate.EntryMinBalanceQuota = intValue
+		case "checkin_setting.entry_max_balance_quota":
+			candidate.EntryMaxBalanceQuota = intValue
+		case "checkin_setting.entry_min_quota":
+			candidate.EntryMinQuota = intValue
+		case "checkin_setting.entry_max_quota":
+			candidate.EntryMaxQuota = intValue
 		case "checkin_setting.min_quota":
 			candidate.MinQuota = intValue
 		case "checkin_setting.max_quota":
@@ -142,6 +307,12 @@ func validateCheckinOptionValue(key string, value string) error {
 		case "checkin_setting.weekly_reward_cap_quota":
 			candidate.WeeklyRewardCapQuota = intValue
 		}
+	case "checkin_setting.entry_reward_bands":
+		var bands []operation_setting.CheckinRewardBand
+		if err := common.UnmarshalJsonStr(value, &bands); err != nil {
+			return fmt.Errorf("签到配置 %s 需要为合法 JSON", key)
+		}
+		candidate.EntryRewardBands = bands
 	case "checkin_setting.basic_reward_bands":
 		var bands []operation_setting.CheckinRewardBand
 		if err := common.UnmarshalJsonStr(value, &bands); err != nil {
@@ -169,15 +340,24 @@ func validateCheckinOptionValue(key string, value string) error {
 		candidate.RewardRule = value
 	}
 
-	if candidate.MaxQuota < candidate.MinQuota {
+	if candidate.EntryMaxQuota < candidate.EntryMinQuota {
 		return errors.New("基础签到最大奖励不能小于最小奖励")
 	}
-	if candidate.BasicMaxBalanceQuota > 0 && candidate.BasicMaxBalanceQuota < candidate.BasicMinBalanceQuota {
+	if candidate.EntryMaxBalanceQuota > 0 && candidate.EntryMaxBalanceQuota < candidate.EntryMinBalanceQuota {
 		return errors.New("基础签到余额上限不能低于基础签到余额门槛")
+	}
+	if candidate.BasicMinBalanceQuota < candidate.EntryMinBalanceQuota {
+		return errors.New("中级签到余额门槛不能低于基础签到余额门槛")
+	}
+	if candidate.MaxQuota < candidate.MinQuota {
+		return errors.New("中级签到最大奖励不能小于最小奖励")
+	}
+	if candidate.BasicMaxBalanceQuota > 0 && candidate.BasicMaxBalanceQuota < candidate.BasicMinBalanceQuota {
+		return errors.New("中级签到余额上限不能低于中级签到余额门槛")
 	}
 	if candidate.AdvancedEnabled {
 		if candidate.AdvancedMinBalanceQuota < candidate.BasicMinBalanceQuota {
-			return errors.New("高级签到余额门槛不能低于基础签到余额门槛")
+			return errors.New("高级签到余额门槛不能低于中级签到余额门槛")
 		}
 		if candidate.AdvancedMaxBalanceQuota > 0 &&
 			candidate.AdvancedMaxBalanceQuota < candidate.AdvancedMinBalanceQuota {
@@ -188,18 +368,26 @@ func validateCheckinOptionValue(key string, value string) error {
 		}
 	}
 	if candidate.WeeklyRewardCapQuota > 0 &&
-		candidate.WeeklyRewardCapQuota < candidate.MinQuota {
+		candidate.WeeklyRewardCapQuota < candidate.EntryMinQuota {
 		return errors.New("每周奖励封顶不能低于基础签到最小奖励")
 	}
 
 	switch key {
+	case "checkin_setting.entry_reward_bands":
+		if err := operation_setting.ValidateCheckinRewardBands(
+			candidate.EntryRewardBands,
+			candidate.EntryMinQuota,
+			candidate.EntryMaxQuota,
+		); err != nil {
+			return fmt.Errorf("基础签到奖励分布校验失败：%w", err)
+		}
 	case "checkin_setting.basic_reward_bands":
 		if err := operation_setting.ValidateCheckinRewardBands(
 			candidate.BasicRewardBands,
 			candidate.MinQuota,
 			candidate.MaxQuota,
 		); err != nil {
-			return fmt.Errorf("基础签到奖励分布校验失败：%w", err)
+			return fmt.Errorf("中级签到奖励分布校验失败：%w", err)
 		}
 	case "checkin_setting.advanced_reward_bands":
 		if err := operation_setting.ValidateCheckinRewardBands(
@@ -220,6 +408,12 @@ func GetOptions(c *gin.Context) {
 	common.OptionMapRWMutex.Lock()
 	for k, v := range common.OptionMap {
 		value := common.Interface2String(v)
+		displayValue := value
+		if strings.HasPrefix(k, "checkin_setting.") {
+			if converted, convertErr := convertCheckinOptionValueForDisplay(k, value); convertErr == nil {
+				displayValue = converted
+			}
+		}
 		isSensitiveKey := strings.HasSuffix(k, "Token") ||
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||
@@ -230,7 +424,7 @@ func GetOptions(c *gin.Context) {
 		}
 		options = append(options, &model.Option{
 			Key:   k,
-			Value: value,
+			Value: displayValue,
 		})
 		for _, optionKey := range completionRatioMetaOptionKeys {
 			if optionKey == k {
@@ -277,6 +471,20 @@ func UpdateOption(c *gin.Context) {
 	default:
 		option.Value = fmt.Sprintf("%v", option.Value)
 	}
+	originalOptionValue := option.Value.(string)
+
+	if strings.HasPrefix(option.Key, "checkin_setting.") {
+		convertedValue, convertErr := convertCheckinOptionValueToStorage(option.Key, originalOptionValue)
+		if convertErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": fmt.Sprintf("签到配置 %s 格式错误，请输入元金额", option.Key),
+			})
+			return
+		}
+		option.Value = convertedValue
+	}
+
 	switch option.Key {
 	case "GitHubOAuthEnabled":
 		if option.Value == "true" && common.GitHubClientId == "" {
@@ -500,11 +708,12 @@ func UpdateOption(c *gin.Context) {
 	if strings.HasPrefix(option.Key, "checkin_setting.") {
 		adminId := c.GetInt("id")
 		model.RecordLogWithAdminInfo(adminId, model.LogTypeManage,
-			fmt.Sprintf("更新签到配置 %s = %s", option.Key, option.Value.(string)),
+			fmt.Sprintf("更新签到配置 %s（元）= %s", option.Key, originalOptionValue),
 			map[string]interface{}{
-				"option_key":   option.Key,
-				"option_value": option.Value.(string),
-				"client_ip":    c.ClientIP(),
+				"option_key":           option.Key,
+				"option_value_display": originalOptionValue,
+				"option_value_storage": option.Value.(string),
+				"client_ip":            c.ClientIP(),
 			},
 		)
 	}

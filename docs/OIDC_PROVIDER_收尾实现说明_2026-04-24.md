@@ -461,3 +461,46 @@ npm run build
 - `/api/oauth/oidc`
 
 均保持并存。
+
+---
+
+## 9. 2026-04-29 补充排障记录（`invalid_client`）
+
+### 9.1 现象
+
+- 第三方 `xiaoye-ai-main` 回调阶段报错：`token endpoint failed: invalid_client - invalid client credentials`
+- 主项目日志表现为：
+  - `GET /oauth/authorize` 返回 `302`（成功）
+  - `POST /oauth/token` 返回 `401`（失败）
+
+### 9.2 根因
+
+`/oauth/token` 的 client secret 校验失败（secret mismatch）。
+
+该问题本质与 OIDC client secret 哈希机制有关：
+
+- `model/hashOIDCValue` -> `common.GenerateHMAC("oidc:"+secret)`  
+- `GenerateHMAC` 使用运行态 `CRYPTO_SECRET`
+
+因此当运行态 `CRYPTO_SECRET/SESSION_SECRET` 与 client 创建/轮换 secret 时不一致，会造成历史 secret 全部失效，稳定触发 `invalid_client`。
+
+### 9.3 已做修复（最小化）
+
+1. 在 `controller/oidc_provider.go` 增强 token 失败审计日志，明确区分：
+   - `unknown client`
+   - `client disabled`
+   - `missing client_secret`
+   - `client secret mismatch`
+   - `invalid authorization code`
+2. 固定 Provider 运行态 `SESSION_SECRET` 与 `CRYPTO_SECRET`。
+3. 对目标 client 重新 `rotate_secret`，并同步第三方 `.env`：
+   - `NEWAPI_OAUTH_CLIENT_SECRET=<new secret>`
+4. 重启第三方后端使配置生效。
+
+### 9.4 验证结果
+
+- `authorize`：`302`，可拿到 `code`
+- `token`：`200`，返回 `access_token/refresh_token/id_token`
+- 第三方 callback 不再出现 `400 invalid_client`
+
+> 注：若 callback 后续仍非 200，需要与 OIDC 鉴权分离排查第三方本地依赖（如 DB 连接），不属于本次 `invalid_client` 根因范围。
