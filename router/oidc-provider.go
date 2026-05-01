@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
 
@@ -8,6 +9,11 @@ import (
 )
 
 func SetOIDCProviderRouter(router *gin.Engine) {
+	if !common.GetEnvOrDefaultBool("OIDC_PROVIDER_ENABLED", true) {
+		common.SysLog("OIDC provider routes are disabled by OIDC_PROVIDER_ENABLED=false")
+		return
+	}
+
 	router.GET("/.well-known/openid-configuration", middleware.RouteTag("oidc_provider"), controller.GetOIDCDiscoveryConfiguration)
 	router.GET("/.well-known/jwks.json", middleware.RouteTag("oidc_provider"), controller.GetOIDCJWKS)
 

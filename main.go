@@ -118,6 +118,15 @@ func main() {
 	// Subscription quota reset task (daily/weekly/monthly/custom)
 	service.StartSubscriptionQuotaResetTask()
 
+	// OIDC provider data cleanup task (authorization codes / oauth tokens)
+	if common.GetEnvOrDefaultBool("OIDC_PROVIDER_ENABLED", true) {
+		cleanupIntervalSeconds := common.GetEnvOrDefault("OIDC_PROVIDER_CLEANUP_INTERVAL_SECONDS", 600)
+		if cleanupIntervalSeconds <= 0 {
+			cleanupIntervalSeconds = 600
+		}
+		go model.StartOIDCProviderCleanupTicker(time.Duration(cleanupIntervalSeconds)*time.Second, nil)
+	}
+
 	// Wire task polling adaptor factory (breaks service -> relay import cycle)
 	service.GetTaskAdaptorFunc = func(platform constant.TaskPlatform) service.TaskPollingAdaptor {
 		a := relay.GetTaskAdaptor(platform)

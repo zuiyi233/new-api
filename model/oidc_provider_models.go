@@ -35,6 +35,9 @@ const (
 	oidcDefaultRefreshTokenPrefix      = "oidc_rt_"
 	oidcClientTypePublic               = "public"
 	oidcClientTypeConfidential         = "confidential"
+	oidcTokenTypeHintAccessToken       = "access_token"
+	oidcTokenTypeHintRefreshToken      = "refresh_token"
+	oidcDefaultCleanupInterval         = 10 * time.Minute
 )
 
 var oidcScopePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9:._-]*$`)
@@ -848,6 +851,94 @@ func RevokeOIDCTokenByAccessToken(accessToken string) error {
 	return DB.Model(&OIDCToken{}).
 		Where("access_token_hash = ? AND revoked_at IS NULL", hashOIDCValue(clean)).
 		Update("revoked_at", now).Error
+}
+
+func RevokeOIDCTokenByRefreshToken(refreshToken string) error {
+	clean := strings.TrimSpace(refreshToken)
+	if clean == "" {
+		return errors.New("refresh token is required")
+	}
+	now := time.Now()
+	return DB.Model(&OIDCToken{}).
+		Where("refresh_token_hash = ? AND revoked_at IS NULL", hashOIDCValue(clean)).
+		Update("revoked_at", now).Error
+}
+
+// RevokeOIDCToken revokes OAuth tokens by token value and optional token type hint.
+// tokenTypeHint supports "access_token" and "refresh_token". Unknown/empty hint falls back to both.
+func RevokeOIDCToken(tokenValue string, tokenTypeHint string) error {
+	cleanToken := strings.TrimSpace(tokenValue)
+	if cleanToken == "" {
+		return errors.New("token is required")
+	}
+	now := time.Now()
+	tokenHash := hashOIDCValue(cleanToken)
+
+	switch strings.ToLower(strings.TrimSpace(tokenTypeHint)) {
+	case oidcTokenTypeHintAccessToken:
+		return DB.Model(&OIDCToken{}).
+			Where("access_token_hash = ? AND revoked_at IS NULL", tokenHash).
+			Update("revoked_at", now).Error
+	case oidcTokenTypeHintRefreshToken:
+		return DB.Model(&OIDCToken{}).
+			Where("refresh_token_hash = ? AND revoked_at IS NULL", tokenHash).
+			Update("revoked_at", now).Error
+	default:
+		return DB.Model(&OIDCToken{}).
+			Where("revoked_at IS NULL AND (access_token_hash = ? OR refresh_token_hash = ?)", tokenHash, tokenHash).
+			Update("revoked_at", now).Error
+	}
+}
+
+type OIDCCleanupResult struct {
+	DeletedAuthorizationCodes int64 `json:"deleted_authorization_codes"`
+	DeletedTokens             int64 `json:"deleted_tokens"`
+}
+
+// CleanupExpiredOIDCProviderData deletes expired/consumed authorization codes and expired/revoked tokens.
+func CleanupExpiredOIDCProviderData(now time.Time) (*OIDCCleanupResult, error) {
+	if now.IsZero() {
+		now = time.Now()
+	}
+	result := &OIDCCleanupResult{}
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		codesDelete := tx.Where("expires_at < ? OR consumed_at IS NOT NULL", now).Delete(&OIDCAuthorizationCode{})
+		if codesDelete.Error != nil {
+			return codesDelete.Error
+		}
+		result.DeletedAuthorizationCodes = codesDelete.RowsAffected
+
+		tokensDelete := tx.Where("revoked_at IS NOT NULL OR access_token_expires_at < ? OR (refresh_token_expires_at IS NOT NULL AND refresh_token_expires_at < ?)", now, now).Delete(&OIDCToken{})
+		if tokensDelete.Error != nil {
+			return tokensDelete.Error
+		}
+		result.DeletedTokens = tokensDelete.RowsAffected
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// StartOIDCProviderCleanupTicker starts a background cleanup ticker for OIDC auth data.
+// Pass a closed stop channel to stop the loop.
+func StartOIDCProviderCleanupTicker(interval time.Duration, stop <-chan struct{}) {
+	if interval <= 0 {
+		interval = oidcDefaultCleanupInterval
+	}
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if _, err := CleanupExpiredOIDCProviderData(time.Now()); err != nil {
+				common.SysError(fmt.Sprintf("oidc cleanup failed: %v", err))
+			}
+		case <-stop:
+			return
+		}
+	}
 }
 
 func EnsureDefaultOIDCSigningKey() error {

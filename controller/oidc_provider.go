@@ -83,6 +83,7 @@ func GetOIDCDiscoveryConfiguration(c *gin.Context) {
 		"authorization_endpoint":                issuer + "/oauth/authorize",
 		"token_endpoint":                        issuer + "/oauth/token",
 		"userinfo_endpoint":                     issuer + "/oauth/userinfo",
+		"end_session_endpoint":                  issuer + "/oauth/logout",
 		"revocation_endpoint":                   issuer + "/oauth/revoke",
 		"introspection_endpoint":                issuer + "/oauth/introspect",
 		"jwks_uri":                              issuer + "/.well-known/jwks.json",
@@ -353,7 +354,22 @@ func OIDCRevokeToken(c *gin.Context) {
 		writeOAuthError(c, http.StatusBadRequest, "invalid_request", "token is required")
 		return
 	}
-	_ = model.RevokeOIDCTokenByAccessToken(token)
+	tokenTypeHint := strings.ToLower(strings.TrimSpace(c.PostForm("token_type_hint")))
+	tokenRecord, resolvedTokenType := lookupOIDCTokenByHintFallback(token, tokenTypeHint)
+	if tokenRecord == nil {
+		c.Status(http.StatusOK)
+		return
+	}
+	if tokenRecord.ClientID != clientID {
+		c.Status(http.StatusOK)
+		return
+	}
+	switch resolvedTokenType {
+	case "refresh_token":
+		_ = model.RevokeOIDCTokenByRefreshToken(token)
+	default:
+		_ = model.RevokeOIDCTokenByAccessToken(token)
+	}
 	c.Status(http.StatusOK)
 }
 
@@ -401,29 +417,7 @@ func OIDCIntrospect(c *gin.Context) {
 		}
 	}
 
-	oauthToken := (*model.OIDCToken)(nil)
-	resolvedTokenType := "Bearer"
-
-	switch tokenTypeHint {
-	case "refresh_token":
-		if refreshToken, tokenErr := model.GetOIDCTokenByRefreshToken(token); tokenErr == nil {
-			oauthToken = refreshToken
-			resolvedTokenType = "refresh_token"
-		}
-	case "", "access_token":
-		if accessToken, tokenErr := model.GetOIDCTokenByAccessToken(token); tokenErr == nil {
-			oauthToken = accessToken
-			resolvedTokenType = "Bearer"
-		}
-	default:
-		if accessToken, tokenErr := model.GetOIDCTokenByAccessToken(token); tokenErr == nil {
-			oauthToken = accessToken
-			resolvedTokenType = "Bearer"
-		} else if refreshToken, tokenErr := model.GetOIDCTokenByRefreshToken(token); tokenErr == nil {
-			oauthToken = refreshToken
-			resolvedTokenType = "refresh_token"
-		}
-	}
+	oauthToken, resolvedTokenType := lookupOIDCTokenByHintFallback(token, tokenTypeHint)
 
 	if oauthToken == nil {
 		c.JSON(http.StatusOK, gin.H{"active": false})
@@ -745,14 +739,10 @@ func oidcTokenByRefreshToken(c *gin.Context, client *model.OIDCClient) {
 	}
 
 	requestedScope := strings.TrimSpace(c.PostForm("scope"))
-	scope := existingToken.Scope
-	if requestedScope != "" {
-		normalizedScope, normalizeErr := normalizeRequestedScope(requestedScope, existingToken.Scope)
-		if normalizeErr != nil {
-			writeOAuthError(c, http.StatusBadRequest, "invalid_scope", normalizeErr.Error())
-			return
-		}
-		scope = normalizedScope
+	scope, resolveErr := resolveRefreshTokenScope(requestedScope, client.Scopes, existingToken.Scope)
+	if resolveErr != nil {
+		writeOAuthError(c, http.StatusBadRequest, "invalid_scope", resolveErr.Error())
+		return
 	}
 
 	oauthToken, accessToken, rotatedRefreshToken, err := model.RotateRefreshToken(refreshToken, &model.CreateOIDCTokenInput{
@@ -1114,6 +1104,79 @@ func containsString(items []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func oidcLookupTokenKinds(tokenTypeHint string) []string {
+	switch strings.ToLower(strings.TrimSpace(tokenTypeHint)) {
+	case "refresh_token":
+		return []string{"refresh", "access"}
+	case "", "access_token":
+		return []string{"access", "refresh"}
+	default:
+		return []string{"access", "refresh"}
+	}
+}
+
+func lookupOIDCTokenByHintFallback(token string, tokenTypeHint string) (*model.OIDCToken, string) {
+	return resolveOIDCTokenByHint(
+		tokenTypeHint,
+		func() (*model.OIDCToken, error) { return model.GetOIDCTokenByAccessToken(token) },
+		func() (*model.OIDCToken, error) { return model.GetOIDCTokenByRefreshToken(token) },
+	)
+}
+
+func resolveOIDCTokenByHint(tokenTypeHint string, lookupAccess func() (*model.OIDCToken, error), lookupRefresh func() (*model.OIDCToken, error)) (*model.OIDCToken, string) {
+	for _, tokenKind := range oidcLookupTokenKinds(tokenTypeHint) {
+		switch tokenKind {
+		case "access":
+			if lookupAccess == nil {
+				continue
+			}
+			if accessToken, tokenErr := lookupAccess(); tokenErr == nil {
+				return accessToken, "Bearer"
+			}
+		case "refresh":
+			if lookupRefresh == nil {
+				continue
+			}
+			if refreshToken, tokenErr := lookupRefresh(); tokenErr == nil {
+				return refreshToken, "refresh_token"
+			}
+		}
+	}
+	return nil, "Bearer"
+}
+
+func resolveRefreshTokenScope(requestedScope string, clientAllowedScopeSource string, originalTokenScope string) (string, error) {
+	clientAllowedScopes := parseAllowedScopeSource(clientAllowedScopeSource)
+	if len(clientAllowedScopes) == 0 {
+		clientAllowedScopes = scopeStringToList(oidcDefaultScope)
+	}
+	originalScopes := scopeStringToList(originalTokenScope)
+	if len(originalScopes) == 0 {
+		return "", fmt.Errorf("original refresh_token scope is empty")
+	}
+
+	clientAllowedSet := make(map[string]struct{}, len(clientAllowedScopes))
+	for _, scope := range clientAllowedScopes {
+		clientAllowedSet[scope] = struct{}{}
+	}
+
+	intersected := make([]string, 0, len(originalScopes))
+	for _, scope := range originalScopes {
+		if _, ok := clientAllowedSet[scope]; ok {
+			intersected = append(intersected, scope)
+		}
+	}
+	if len(intersected) == 0 {
+		return "", fmt.Errorf("no scope can be granted for this refresh_token")
+	}
+
+	allowedSource := strings.Join(intersected, " ")
+	if strings.TrimSpace(requestedScope) == "" {
+		return normalizeRequestedScope(allowedSource, allowedSource)
+	}
+	return normalizeRequestedScope(requestedScope, allowedSource)
 }
 
 func getOIDCIssuer(c *gin.Context) string {
