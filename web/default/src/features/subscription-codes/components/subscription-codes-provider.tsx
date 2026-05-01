@@ -9,6 +9,8 @@ type SubscriptionCodesContextType = {
   setCurrentRow: React.Dispatch<React.SetStateAction<SubscriptionCode | null>>
   refreshTrigger: number
   triggerRefresh: () => void
+  currentPageData: SubscriptionCode[]
+  setCurrentPageData: React.Dispatch<React.SetStateAction<SubscriptionCode[]>>
 }
 
 const SubscriptionCodesContext =
@@ -23,6 +25,7 @@ export function SubscriptionCodesProvider({
     useDialogState<SubscriptionCodesDialogType>(null)
   const [currentRow, setCurrentRow] = useState<SubscriptionCode | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [currentPageData, setCurrentPageData] = useState<SubscriptionCode[]>([])
 
   const triggerRefresh = () => setRefreshTrigger((prev) => prev + 1)
 
@@ -35,6 +38,8 @@ export function SubscriptionCodesProvider({
         setCurrentRow,
         refreshTrigger,
         triggerRefresh,
+        currentPageData,
+        setCurrentPageData,
       }}
     >
       {children}

@@ -10,6 +10,8 @@ const registrationCodesSearchSchema = z.object({
   pageSize: z.number().optional().catch(10),
   filter: z.string().optional().catch(''),
   status: z.array(z.enum(REGISTRATION_CODE_STATUS_VALUES)).optional().catch([]),
+  product_key: z.array(z.string()).optional().catch([]),
+  channel: z.array(z.string()).optional().catch([]),
 })
 
 export const Route = createFileRoute('/_authenticated/registration-codes/')({

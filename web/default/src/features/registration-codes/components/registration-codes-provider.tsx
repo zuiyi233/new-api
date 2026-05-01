@@ -9,6 +9,8 @@ type RegistrationCodesContextType = {
   setCurrentRow: React.Dispatch<React.SetStateAction<RegistrationCode | null>>
   refreshTrigger: number
   triggerRefresh: () => void
+  currentPageData: RegistrationCode[]
+  setCurrentPageData: React.Dispatch<React.SetStateAction<RegistrationCode[]>>
 }
 
 const RegistrationCodesContext =
@@ -23,6 +25,7 @@ export function RegistrationCodesProvider({
     useDialogState<RegistrationCodesDialogType>(null)
   const [currentRow, setCurrentRow] = useState<RegistrationCode | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [currentPageData, setCurrentPageData] = useState<RegistrationCode[]>([])
 
   const triggerRefresh = () => setRefreshTrigger((prev) => prev + 1)
 
@@ -35,6 +38,8 @@ export function RegistrationCodesProvider({
         setCurrentRow,
         refreshTrigger,
         triggerRefresh,
+        currentPageData,
+        setCurrentPageData,
       }}
     >
       {children}

@@ -62,7 +62,7 @@ function isDisabledRow(code: RegistrationCode) {
 export function RegistrationCodesTable() {
   const { t } = useTranslation()
   const columns = useRegistrationCodesColumns()
-  const { refreshTrigger } = useRegistrationCodes()
+  const { refreshTrigger, setCurrentPageData } = useRegistrationCodes()
   const isMobile = useMediaQuery('(max-width: 640px)')
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -83,6 +83,8 @@ export function RegistrationCodesTable() {
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [
       { columnId: 'status', searchKey: 'status', type: 'array' },
+      { columnId: 'product_key', searchKey: 'product_key', type: 'array' },
+      { columnId: 'channel', searchKey: 'channel', type: 'array' },
     ],
   })
 
@@ -120,6 +122,10 @@ export function RegistrationCodesTable() {
   const totalCount = data?.total || 0
 
   useEffect(() => {
+    setCurrentPageData(tableData)
+  }, [tableData, setCurrentPageData])
+
+  useEffect(() => {
     ensurePageInRange(totalCount)
   }, [totalCount, ensurePageInRange])
 
@@ -152,6 +158,10 @@ export function RegistrationCodesTable() {
   })
 
   const statusOptions = getRegistrationCodeStatusOptions(t)
+  const productOptions = [
+    { label: 'novel_product', value: 'novel_product' },
+  ]
+  const channelOptions: { label: string; value: string }[] = []
 
   return (
     <div className='flex flex-1 flex-col gap-3 sm:gap-4'>
@@ -165,6 +175,11 @@ export function RegistrationCodesTable() {
             columnId: 'status',
             title: t('Status'),
             options: statusOptions,
+          },
+          {
+            columnId: 'product_key',
+            title: t('Product'),
+            options: productOptions,
           },
         ]}
       />

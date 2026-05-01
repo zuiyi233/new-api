@@ -62,7 +62,7 @@ function isDisabledRow(code: SubscriptionCode) {
 export function SubscriptionCodesTable() {
   const { t } = useTranslation()
   const columns = useSubscriptionCodesColumns()
-  const { refreshTrigger } = useSubscriptionCodes()
+  const { refreshTrigger, setCurrentPageData } = useSubscriptionCodes()
   const isMobile = useMediaQuery('(max-width: 640px)')
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([])
@@ -83,6 +83,8 @@ export function SubscriptionCodesTable() {
     globalFilter: { enabled: true, key: 'filter' },
     columnFilters: [
       { columnId: 'status', searchKey: 'status', type: 'array' },
+      { columnId: 'product_key', searchKey: 'product_key', type: 'array' },
+      { columnId: 'channel', searchKey: 'channel', type: 'array' },
     ],
   })
 
@@ -120,6 +122,10 @@ export function SubscriptionCodesTable() {
   const totalCount = data?.total || 0
 
   useEffect(() => {
+    setCurrentPageData(tableData)
+  }, [tableData, setCurrentPageData])
+
+  useEffect(() => {
     ensurePageInRange(totalCount)
   }, [totalCount, ensurePageInRange])
 
@@ -152,6 +158,9 @@ export function SubscriptionCodesTable() {
   })
 
   const statusOptions = getSubscriptionCodeStatusOptions(t)
+  const productOptions = [
+    { label: 'novel_product', value: 'novel_product' },
+  ]
 
   return (
     <div className='flex flex-1 flex-col gap-3 sm:gap-4'>
@@ -165,6 +174,11 @@ export function SubscriptionCodesTable() {
             columnId: 'status',
             title: t('Status'),
             options: statusOptions,
+          },
+          {
+            columnId: 'product_key',
+            title: t('Product'),
+            options: productOptions,
           },
         ]}
       />
