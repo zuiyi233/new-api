@@ -15,6 +15,13 @@ import {
   CreditCard,
   ListTodo,
   Settings,
+  QrCode,
+  Bookmark,
+  ShoppingCart,
+  PackageOpen,
+  Send,
+  BarChart3,
+  Image,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { WORKSPACE_IDS } from '@/components/layout/lib/workspace-registry'
@@ -80,6 +87,11 @@ export function useSidebarData(): SidebarData {
             configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
             icon: ListTodo,
           },
+          {
+            title: t('Midjourney Logs'),
+            url: '/midjourney',
+            icon: Image,
+          },
         ],
       },
       {
@@ -95,6 +107,11 @@ export function useSidebarData(): SidebarData {
             title: t('Profile'),
             url: '/profile',
             icon: User,
+          },
+          {
+            title: t('Order Claim'),
+            url: '/order-claim',
+            icon: ShoppingCart,
           },
         ],
       },
@@ -121,6 +138,31 @@ export function useSidebarData(): SidebarData {
             title: t('Redemption Codes'),
             url: '/redemption-codes',
             icon: Ticket,
+          },
+          {
+            title: t('Registration Codes'),
+            url: '/registration-codes',
+            icon: QrCode,
+          },
+          {
+            title: t('Subscription Codes'),
+            url: '/subscription-codes',
+            icon: Bookmark,
+          },
+          {
+            title: t('Code Center'),
+            url: '/code-center',
+            icon: BarChart3,
+          },
+          {
+            title: t('Code Publication'),
+            url: '/code-publication',
+            icon: Send,
+          },
+          {
+            title: t('Order Claims Management'),
+            url: '/order-claim-admin',
+            icon: PackageOpen,
           },
           {
             title: t('Subscription Management'),
