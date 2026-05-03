@@ -4,7 +4,7 @@ import type { OrderClaim, ApiResponse, ClaimOrderParams, GetOrderClaimsParams } 
 export async function claimOrder(
   params: ClaimOrderParams
 ): Promise<ApiResponse<OrderClaim>> {
-  const res = await api.post('/api/order-claim/claim', params)
+  const res = await api.post('/api/order-claim/self', params)
   return res.data
 }
 
@@ -22,6 +22,6 @@ export async function getMyClaims(
     }
   })
 
-  const res = await api.get(`/api/order-claim/my?${searchParams.toString()}`)
+  const res = await api.get(`/api/order-claim/self?${searchParams.toString()}`)
   return res.data
 }

@@ -85,8 +85,28 @@ const GENERAL_SECTIONS = [
       <CheckinSettingsSection
         defaultValues={{
           enabled: settings['checkin_setting.enabled'],
+          entryMinBalanceQuota: settings['checkin_setting.entry_min_balance_quota'],
+          entryMaxBalanceQuota: settings['checkin_setting.entry_max_balance_quota'],
+          entryMinQuota: settings['checkin_setting.entry_min_quota'],
+          entryMaxQuota: settings['checkin_setting.entry_max_quota'],
+          entryRewardBands: settings['checkin_setting.entry_reward_bands'],
           minQuota: settings['checkin_setting.min_quota'],
           maxQuota: settings['checkin_setting.max_quota'],
+          basicMinBalanceQuota: settings['checkin_setting.basic_min_balance_quota'],
+          basicMaxBalanceQuota: settings['checkin_setting.basic_max_balance_quota'],
+          basicRewardBands: settings['checkin_setting.basic_reward_bands'],
+          advancedEnabled: settings['checkin_setting.advanced_enabled'],
+          advancedMinBalanceQuota:
+            settings['checkin_setting.advanced_min_balance_quota'],
+          advancedMaxBalanceQuota:
+            settings['checkin_setting.advanced_max_balance_quota'],
+          advancedMinQuota: settings['checkin_setting.advanced_min_quota'],
+          advancedMaxQuota: settings['checkin_setting.advanced_max_quota'],
+          advancedRewardBands: settings['checkin_setting.advanced_reward_bands'],
+          minIntervalHours: settings['checkin_setting.min_interval_hours'],
+          weeklyRewardCapQuota:
+            settings['checkin_setting.weekly_reward_cap_quota'],
+          rewardRule: settings['checkin_setting.reward_rule'],
         }}
       />
     ),

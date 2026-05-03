@@ -1,4 +1,4 @@
-import { Plus, Upload, History, BarChart3, Download, FileDown } from 'lucide-react'
+import { Plus, Upload, History, BarChart3, FileDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'

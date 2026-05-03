@@ -57,8 +57,25 @@ export type GeneralSettings = {
   DemoSiteEnabled: boolean
   SelfUseModeEnabled: boolean
   'checkin_setting.enabled': boolean
+  'checkin_setting.entry_min_balance_quota': number
+  'checkin_setting.entry_max_balance_quota': number
+  'checkin_setting.entry_min_quota': number
+  'checkin_setting.entry_max_quota': number
+  'checkin_setting.entry_reward_bands': string
   'checkin_setting.min_quota': number
   'checkin_setting.max_quota': number
+  'checkin_setting.basic_min_balance_quota': number
+  'checkin_setting.basic_max_balance_quota': number
+  'checkin_setting.basic_reward_bands': string
+  'checkin_setting.advanced_enabled': boolean
+  'checkin_setting.advanced_min_balance_quota': number
+  'checkin_setting.advanced_max_balance_quota': number
+  'checkin_setting.advanced_min_quota': number
+  'checkin_setting.advanced_max_quota': number
+  'checkin_setting.advanced_reward_bands': string
+  'checkin_setting.min_interval_hours': number
+  'checkin_setting.weekly_reward_cap_quota': number
+  'checkin_setting.reward_rule': string
   'channel_affinity_setting.enabled': boolean
   'channel_affinity_setting.switch_on_success': boolean
   'channel_affinity_setting.max_entries': number

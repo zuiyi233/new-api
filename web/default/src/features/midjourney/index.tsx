@@ -16,6 +16,7 @@ import {
 } from '@tanstack/react-table'
 import { useMediaQuery } from '@/hooks'
 import { useTranslation } from 'react-i18next'
+import { useIsAdmin } from '@/hooks/use-admin'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import {
   Table,
@@ -31,40 +32,65 @@ import {
   TableSkeleton,
   TableEmpty,
   MobileCardList,
+  DataTableColumnHeader,
 } from '@/components/data-table'
-import { DataTableColumnHeader } from '@/components/data-table'
-import { PageFooterPortal } from '@/components/layout'
-import { SectionPageLayout } from '@/components/layout'
+import { PageFooterPortal, SectionPageLayout } from '@/components/layout'
 import { formatTimestampToDate } from '@/lib/format'
-import { getMjLogs, searchMjLogs } from './api'
-import type { MjLog } from './types'
+import { getMjLogs } from './api'
+import type { GetMjLogsParams, MjLog } from './types'
 
 const route = getRouteApi('/_authenticated/midjourney/')
 
-function useMjLogsColumns(): ColumnDef<MjLog>[] {
+function useMjLogsColumns(isAdmin: boolean): ColumnDef<MjLog>[] {
   const { t } = useTranslation()
-  return [
+
+  const columns: ColumnDef<MjLog>[] = [
     {
       accessorKey: 'id',
       meta: { label: t('ID'), mobileHidden: true },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('ID')} />
       ),
-      cell: ({ row }) => (
-        <div className='w-[60px]'>{row.getValue('id')}</div>
-      ),
+      cell: ({ row }) => <div className='w-[60px]'>#{row.original.id}</div>,
     },
-    {
+  ]
+
+  if (isAdmin) {
+    columns.push({
       accessorKey: 'user_name',
       meta: { label: t('User'), mobileTitle: true },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('User')} />
       ),
       cell: ({ row }) => (
-        <div className='max-w-[100px] truncate font-medium'>
-          {row.getValue('user_name') || `#${row.original.user_id}`}
+        <div className='max-w-[120px] truncate font-medium'>
+          {row.original.user_name || `#${row.original.user_id}`}
         </div>
       ),
+    })
+  } else {
+    columns.push({
+      accessorKey: 'mj_id',
+      meta: { label: t('Task ID'), mobileTitle: true },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('Task ID')} />
+      ),
+      cell: ({ row }) => (
+        <div className='max-w-[160px] truncate font-medium'>
+          {row.original.mj_id || '-'}
+        </div>
+      ),
+    })
+  }
+
+  columns.push(
+    {
+      accessorKey: 'status',
+      meta: { label: t('Status'), mobileBadge: true },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('Status')} />
+      ),
+      cell: ({ row }) => <span>{row.original.status || '-'}</span>,
     },
     {
       accessorKey: 'action',
@@ -72,19 +98,29 @@ function useMjLogsColumns(): ColumnDef<MjLog>[] {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Action')} />
       ),
+      cell: ({ row }) => <span>{row.original.action || '-'}</span>,
+    },
+    {
+      accessorKey: 'channel_id',
+      meta: { label: t('Channel'), mobileHidden: true },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('Channel')} />
+      ),
       cell: ({ row }) => (
-        <div className='w-[80px]'>{row.getValue('action')}</div>
+        <span>
+          {row.original.channel_name || row.original.channel_id || '-'}
+        </span>
       ),
     },
     {
-      accessorKey: 'model_name',
-      meta: { label: t('Model'), mobileHidden: true },
+      accessorKey: 'mj_id_detail',
+      meta: { label: t('Task ID'), mobileHidden: true },
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('Model')} />
+        <DataTableColumnHeader column={column} title={t('Task ID')} />
       ),
       cell: ({ row }) => (
-        <div className='max-w-[100px] truncate'>
-          {row.getValue('model_name') || '-'}
+        <div className='max-w-[160px] truncate font-mono text-xs'>
+          {row.original.mj_id || '-'}
         </div>
       ),
     },
@@ -94,57 +130,44 @@ function useMjLogsColumns(): ColumnDef<MjLog>[] {
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Prompt')} />
       ),
-      cell: ({ row }) => {
-        const prompt = row.getValue('prompt') as string
-        return (
-          <div className='max-w-[200px] truncate text-xs'>
-            {prompt || '-'}
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: 'status',
-      meta: { label: t('Status'), mobileBadge: true },
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('Status')} />
-      ),
       cell: ({ row }) => (
-        <div className='w-[80px]'>{row.getValue('status')}</div>
+        <div className='max-w-[260px] truncate text-xs'>
+          {row.original.prompt || '-'}
+        </div>
       ),
     },
     {
-      accessorKey: 'quota_used',
+      accessorKey: 'quota',
       meta: { label: t('Quota'), mobileHidden: true },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('Quota')} />
       ),
-      cell: ({ row }) => (
-        <div className='w-[80px]'>{row.getValue('quota_used') || 0}</div>
-      ),
+      cell: ({ row }) => <span>{row.original.quota || 0}</span>,
     },
     {
-      accessorKey: 'created_at',
-      meta: { label: t('Created'), mobileHidden: true },
+      accessorKey: 'submit_time',
+      meta: { label: t('Submit Time'), mobileHidden: true },
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('Created')} />
+        <DataTableColumnHeader column={column} title={t('Submit Time')} />
       ),
-      cell: ({ row }) => {
-        const value = row.getValue('created_at') as number
-        return (
-          <div className='w-[120px]'>
-            {formatTimestampToDate(value)}
-          </div>
-        )
-      },
-    },
-  ]
+      cell: ({ row }) => (
+        <span>
+          {row.original.submit_time ? formatTimestampToDate(row.original.submit_time) : '-'}
+        </span>
+      ),
+    }
+  )
+
+  return columns
 }
 
 export function Midjourney() {
   const { t } = useTranslation()
-  const columns = useMjLogsColumns()
+  const isAdmin = useIsAdmin()
   const isMobile = useMediaQuery('(max-width: 640px)')
+  const columns = useMjLogsColumns(isAdmin)
+  const search = route.useSearch()
+
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
 
@@ -155,47 +178,38 @@ export function Midjourney() {
     onPaginationChange,
     ensurePageInRange,
   } = useTableUrlState({
-    search: route.useSearch(),
+    search,
     navigate: route.useNavigate(),
     pagination: { defaultPage: 1, defaultPageSize: isMobile ? 10 : 20 },
     globalFilter: { enabled: true, key: 'filter' },
   })
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: [
-      'mj-logs',
-      pagination.pageIndex + 1,
-      pagination.pageSize,
-      globalFilter,
-    ],
+  const { data, isLoading } = useQuery({
+    queryKey: ['mj-logs', isAdmin, pagination.pageIndex + 1, pagination.pageSize, globalFilter],
     queryFn: async () => {
-      const hasFilter = globalFilter?.trim()
-      const params = {
+      const params: GetMjLogsParams = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
       }
-
-      const result = hasFilter
-        ? await searchMjLogs(
-            globalFilter,
-            pagination.pageIndex + 1,
-            pagination.pageSize
-          )
-        : await getMjLogs(params)
-
+      const filter = globalFilter?.trim() || ''
+      if (filter) {
+        params.mj_id = filter
+      }
+      const result = await getMjLogs(isAdmin, params)
       return {
-        items: (result.data?.items || []) as MjLog[],
+        items: result.data?.items || [],
         total: result.data?.total || 0,
       }
     },
+    placeholderData: (prev) => prev,
   })
 
   const tableData = useMemo(() => data?.items || [], [data?.items])
   const totalCount = data?.total || 0
 
   useEffect(() => {
-    ensurePageInRange(totalCount)
-  }, [totalCount, ensurePageInRange])
+    ensurePageInRange(Math.ceil(totalCount / pagination.pageSize))
+  }, [ensurePageInRange, pagination.pageSize, totalCount])
 
   const table = useReactTable({
     data: tableData,
@@ -206,12 +220,12 @@ export function Midjourney() {
       globalFilter,
       pagination,
     },
-    pageCount: Math.ceil(totalCount / pagination.pageSize),
+    pageCount: Math.max(1, Math.ceil(totalCount / pagination.pageSize)),
     manualPagination: true,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: onGlobalFilterChange,
-    onPaginationChange: onPaginationChange,
+    onGlobalFilterChange,
+    onPaginationChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -222,49 +236,25 @@ export function Midjourney() {
 
   return (
     <SectionPageLayout>
-      <SectionPageLayout.Title>
-        {t('Midjourney Logs')}
-      </SectionPageLayout.Title>
+      <SectionPageLayout.Title>{t('Midjourney Logs')}</SectionPageLayout.Title>
       <SectionPageLayout.Description>
-        {t('View Midjourney image generation logs')}
+        {isAdmin
+          ? t('Admin view for all Midjourney tasks')
+          : t('Your Midjourney task history')}
       </SectionPageLayout.Description>
       <SectionPageLayout.Content>
         <div className='flex flex-1 flex-col gap-3 sm:gap-4'>
           <DataTableToolbar
             table={table}
-            globalFilter={globalFilter}
-            onGlobalFilterChange={onGlobalFilterChange}
-            globalFilterPlaceholder={t('Filter logs...')}
+            searchPlaceholder={t('Filter by Task ID...')}
           />
 
-          {isLoading ? (
-            <TableSkeleton columns={6} rows={isMobile ? 5 : 10} />
-          ) : tableData.length === 0 ? (
-            <TableEmpty
-              title={t('No Midjourney logs found')}
-              description={t('No Midjourney image generation logs yet.')}
-            />
-          ) : isMobile ? (
+          {isMobile ? (
             <MobileCardList
               table={table}
-              renderCard={(row) => {
-                const log = row.original
-                return (
-                  <div className='flex flex-col gap-1.5'>
-                    <div className='flex items-center justify-between'>
-                      <span className='font-medium'>
-                        {log.user_name || `#${log.user_id}`}
-                      </span>
-                      <span className='text-muted-foreground text-xs'>
-                        {log.action}
-                      </span>
-                    </div>
-                    <div className='text-muted-foreground text-xs truncate'>
-                      {log.prompt || t('No prompt')}
-                    </div>
-                  </div>
-                )
-              }}
+              isLoading={isLoading}
+              emptyTitle={t('No Midjourney logs found')}
+              emptyDescription={t('No Midjourney image generation logs yet.')}
             />
           ) : (
             <div className='rounded-md border'>
@@ -286,12 +276,17 @@ export function Midjourney() {
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {table.getRowModel().rows?.length ? (
+                  {isLoading ? (
+                    <TableSkeleton table={table} keyPrefix='midjourney-skeleton' />
+                  ) : table.getRowModel().rows.length === 0 ? (
+                    <TableEmpty
+                      colSpan={columns.length}
+                      title={t('No Midjourney logs found')}
+                      description={t('No Midjourney image generation logs yet.')}
+                    />
+                  ) : (
                     table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        data-state={row.getIsSelected() && 'selected'}
-                      >
+                      <TableRow key={row.id}>
                         {row.getVisibleCells().map((cell) => (
                           <TableCell key={cell.id}>
                             {flexRender(
@@ -302,15 +297,6 @@ export function Midjourney() {
                         ))}
                       </TableRow>
                     ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={columns.length}
-                        className='h-24 text-center'
-                      >
-                        {t('No results.')}
-                      </TableCell>
-                    </TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -318,11 +304,7 @@ export function Midjourney() {
           )}
 
           <PageFooterPortal>
-            <DataTablePagination
-              table={table}
-              totalCount={totalCount}
-              isFetching={isFetching}
-            />
+            <DataTablePagination table={table} />
           </PageFooterPortal>
         </div>
       </SectionPageLayout.Content>

@@ -12,7 +12,7 @@ export const SUBSCRIPTION_CODE_STATUSES: Record<
   {
     labelKey: string
     value: number
-    variant: 'success' | 'destructive' | 'warning' | 'neutral'
+    variant: 'success' | 'red' | 'warning' | 'neutral'
     showDot: boolean
   }
 > = {
@@ -24,7 +24,7 @@ export const SUBSCRIPTION_CODE_STATUSES: Record<
   },
   [SUBSCRIPTION_CODE_STATUS.DISABLED]: {
     labelKey: 'Disabled',
-    variant: 'destructive',
+    variant: 'red',
     value: SUBSCRIPTION_CODE_STATUS.DISABLED,
     showDot: true,
   },

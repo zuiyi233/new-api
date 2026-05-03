@@ -69,7 +69,10 @@ func amountToQuotaValue(amount float64) int {
 }
 
 func looksLikeLegacyQuotaValue(value float64) bool {
-	return value > 10000
+	if common.QuotaPerUnit <= 0 {
+		return value > 10000
+	}
+	return value > common.QuotaPerUnit
 }
 
 func quotaToAmountValue(quota float64) float64 {

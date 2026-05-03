@@ -14,23 +14,21 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SectionPageLayout } from '@/components/layout'
 import { formatTimestampToDate } from '@/lib/format'
 import { claimOrder, getMyClaims } from './api'
 
 const claimFormSchema = z.object({
-  order_no: z.string().min(1, 'Order number is required'),
-  product_key: z.string().min(1, 'Product is required'),
-  code_type: z.string().min(1, 'Code type is required'),
+  source_platform: z.string().min(1, 'Source platform is required'),
+  external_order_no: z.string().min(1, 'External order number is required'),
+  buyer_contact: z.string().min(1, 'Buyer contact is required'),
+  claimed_product: z.string().min(1, 'Claimed product is required'),
+  proof_images_text: z.string().optional(),
+  claim_note: z.string().optional(),
 })
 
 type ClaimFormValues = z.infer<typeof claimFormSchema>
@@ -39,12 +37,31 @@ export function OrderClaim() {
   const { t } = useTranslation()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const splitProofImages = (value?: string): string[] =>
+    String(value || '')
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+  const renderClaimStatusBadge = (status?: string) => {
+    if (status === 'approved') {
+      return <Badge className='bg-emerald-600'>{status}</Badge>
+    }
+    if (status === 'rejected') {
+      return <Badge variant='destructive'>{status}</Badge>
+    }
+    return <Badge variant='secondary'>{status || 'pending_review'}</Badge>
+  }
+
   const form = useForm<ClaimFormValues>({
     resolver: zodResolver(claimFormSchema),
     defaultValues: {
-      order_no: '',
-      product_key: 'novel_product',
-      code_type: 'registration',
+      source_platform: '',
+      external_order_no: '',
+      buyer_contact: '',
+      claimed_product: 'novel_product',
+      proof_images_text: '',
+      claim_note: '',
     },
   })
 
@@ -59,9 +76,16 @@ export function OrderClaim() {
   const onSubmit = async (data: ClaimFormValues) => {
     setIsSubmitting(true)
     try {
-      const result = await claimOrder(data)
+      const result = await claimOrder({
+        source_platform: data.source_platform.trim(),
+        external_order_no: data.external_order_no.trim(),
+        buyer_contact: data.buyer_contact.trim(),
+        claimed_product: data.claimed_product.trim(),
+        proof_images: splitProofImages(data.proof_images_text),
+        claim_note: data.claim_note?.trim() || '',
+      })
       if (result.success) {
-        toast.success(t('Code claimed successfully!'))
+        toast.success(t('Order claim submitted successfully!'))
         form.reset()
         refetch()
       }
@@ -78,7 +102,7 @@ export function OrderClaim() {
         {t('Order Claim')}
       </SectionPageLayout.Title>
       <SectionPageLayout.Description>
-        {t('Claim your registration or subscription code using your order number')}
+        {t('Submit your external order information for manual claim review')}
       </SectionPageLayout.Description>
       <SectionPageLayout.Content>
         <div className='space-y-8'>
@@ -94,13 +118,13 @@ export function OrderClaim() {
                 >
                   <FormField
                     control={form.control}
-                    name='order_no'
+                    name='source_platform'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('Order Number')}</FormLabel>
+                        <FormLabel>{t('Source Platform')}</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder={t('Enter your order number')}
+                            placeholder={t('Enter source platform')}
                             {...field}
                           />
                         </FormControl>
@@ -111,25 +135,16 @@ export function OrderClaim() {
 
                   <FormField
                     control={form.control}
-                    name='product_key'
+                    name='external_order_no'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('Product')}</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value='novel_product'>
-                              novel_product
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormLabel>{t('External Order Number')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('Enter external order number')}
+                            {...field}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -137,35 +152,76 @@ export function OrderClaim() {
 
                   <FormField
                     control={form.control}
-                    name='code_type'
+                    name='buyer_contact'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('Code Type')}</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value='registration'>
-                              {t('Registration Code')}
-                            </SelectItem>
-                            <SelectItem value='subscription'>
-                              {t('Subscription Code')}
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormLabel>{t('Buyer Contact')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('Enter buyer contact')}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='claimed_product'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Claimed Product')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('Enter claimed product')}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='claim_note'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Claim Note')}</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder={t('Optional claim note')}
+                            rows={3}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='proof_images_text'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Proof Image URLs')}</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder={t('One URL per line')}
+                            rows={4}
+                            {...field}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
                   <Button type='submit' disabled={isSubmitting}>
-                    {isSubmitting ? t('Claiming...') : t('Claim Code')}
+                    {isSubmitting ? t('Submitting...') : t('Submit Claim')}
                   </Button>
                 </form>
               </Form>
@@ -186,18 +242,47 @@ export function OrderClaim() {
                   {claims.map((claim) => (
                     <div
                       key={claim.id}
-                      className='flex items-center justify-between rounded-md border p-3'
+                      className='space-y-2 rounded-md border p-3'
                     >
-                      <div>
-                        <p className='font-medium'>{claim.order_no}</p>
-                        <p className='text-muted-foreground text-xs'>
-                          {claim.code_type} - {claim.product_key}
+                      <div className='flex items-center justify-between gap-2'>
+                        <p className='font-medium'>
+                          #{claim.id} · {claim.external_order_no}
                         </p>
+                        {renderClaimStatusBadge(claim.claim_status)}
                       </div>
-                      <div className='text-right'>
-                        <p className='font-mono text-sm'>{claim.code}</p>
+                      <div className='grid gap-1 text-xs'>
                         <p className='text-muted-foreground text-xs'>
-                          {formatTimestampToDate(claim.claimed_at)}
+                          {claim.source_platform} - {claim.claimed_product}
+                        </p>
+                        <p className='text-muted-foreground text-xs'>
+                          {t('Grant Type')}: {claim.grant_type || '-'}
+                        </p>
+                        <p className='text-muted-foreground text-xs'>
+                          {t('Review Note')}: {claim.review_note || '-'}
+                        </p>
+                        {Array.isArray(claim.proof_images) &&
+                        claim.proof_images.length > 0 ? (
+                          <div className='flex flex-wrap gap-2'>
+                            {claim.proof_images.map((url, index) => (
+                              <a
+                                key={`${url}-${index}`}
+                                className='text-primary text-xs underline'
+                                href={url}
+                                target='_blank'
+                                rel='noreferrer'
+                              >
+                                {t('Proof {{index}}', { index: index + 1 })}
+                              </a>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className='text-right text-xs'>
+                        <p className='font-mono text-sm'>
+                          {claim.granted_code || '-'}
+                        </p>
+                        <p className='text-muted-foreground text-xs'>
+                          {formatTimestampToDate(claim.created_at)}
                         </p>
                       </div>
                     </div>

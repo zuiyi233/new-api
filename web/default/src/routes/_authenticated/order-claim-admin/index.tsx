@@ -8,6 +8,8 @@ const orderClaimAdminSearchSchema = z.object({
   page: z.number().optional().catch(1),
   pageSize: z.number().optional().catch(10),
   filter: z.string().optional().catch(''),
+  claimId: z.number().optional().catch(undefined),
+  autoOpen: z.union([z.boolean(), z.string(), z.number()]).optional().catch(undefined),
 })
 
 export const Route = createFileRoute('/_authenticated/order-claim-admin/')({

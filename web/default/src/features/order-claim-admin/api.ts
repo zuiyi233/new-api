@@ -1,5 +1,12 @@
 import { api } from '@/lib/api'
-import type { OrderClaimAdmin, ApiResponse, GetOrderClaimsAdminParams } from './types'
+import type {
+  OrderClaimAdmin,
+  ApiResponse,
+  GetOrderClaimsAdminParams,
+  ReviewClaimPayload,
+  OrderClaimReviewResult,
+  SubscriptionPlanDTO,
+} from './types'
 
 export async function getAllClaims(
   params: GetOrderClaimsAdminParams = {}
@@ -24,8 +31,31 @@ export async function searchAllClaims(
   p = 1,
   page_size = 10
 ): Promise<ApiResponse<{ items: OrderClaimAdmin[]; total: number }>> {
-  const res = await api.get(
-    `/api/order-claim/admin/search?keyword=${encodeURIComponent(keyword)}&p=${p}&page_size=${page_size}`
-  )
+  return getAllClaims({
+    keyword,
+    p,
+    page_size,
+  })
+}
+
+export async function getClaimById(
+  id: number
+): Promise<ApiResponse<OrderClaimAdmin>> {
+  const res = await api.get(`/api/order-claim/admin/${id}`)
+  return res.data
+}
+
+export async function reviewClaim(
+  id: number,
+  payload: ReviewClaimPayload
+): Promise<ApiResponse<OrderClaimReviewResult>> {
+  const res = await api.post(`/api/order-claim/admin/${id}/review`, payload)
+  return res.data
+}
+
+export async function getAdminSubscriptionPlans(): Promise<
+  ApiResponse<SubscriptionPlanDTO[]>
+> {
+  const res = await api.get('/api/subscription/admin/plans')
   return res.data
 }

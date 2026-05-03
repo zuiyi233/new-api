@@ -3,6 +3,7 @@ import { createSectionRegistry } from '../utils/section-registry'
 import { BasicAuthSection } from './basic-auth-section'
 import { BotProtectionSection } from './bot-protection-section'
 import { CustomOAuthSection } from './custom-oauth/custom-oauth-section'
+import { OIDCHubClientsSection } from './oidc-hub-clients'
 import { OAuthSection } from './oauth-section'
 import { PasskeySection } from './passkey-section'
 
@@ -103,6 +104,12 @@ const AUTH_SECTIONS = [
         }}
       />
     ),
+  },
+  {
+    id: 'oidc-hub-clients',
+    titleKey: 'OIDC Hub Clients',
+    descriptionKey: 'Manage OAuth clients used by third-party projects',
+    build: () => <OIDCHubClientsSection />,
   },
   {
     id: 'custom-oauth',

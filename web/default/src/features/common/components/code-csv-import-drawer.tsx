@@ -193,9 +193,6 @@ export function CodeCsvImportDrawer({
   }, [previewResult?.errors])
 
   const templateHeaderText = useMemo(() => {
-    if (!Array.isArray(template.columns) || template.columns.length === 0) {
-      return ''
-    }
     return template.columns.join(', ')
   }, [template.columns])
 
@@ -294,14 +291,14 @@ export function CodeCsvImportDrawer({
                         </TableHeader>
                         <TableBody>
                           {previewRows.slice(0, 20).map((row, idx) => (
-                              <TableRow key={idx}>
-                                {previewHeaders.map((header) => (
-                                  <TableCell key={header}>
-                                    {String(row[header] ?? '-')}
-                                  </TableCell>
-                                ))}
-                              </TableRow>
-                            ))}
+                            <TableRow key={idx}>
+                              {previewHeaders.map((header) => (
+                                <TableCell key={header}>
+                                  {String(row[header] ?? '-')}
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
                         </TableBody>
                       </Table>
                     </div>

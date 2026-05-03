@@ -5,13 +5,25 @@ export type HeaderNavPricingConfig = {
   requireAuth: boolean
 }
 
+export type HeaderNavExternalLinkConfig = {
+  enabled: boolean
+  text: string
+  url: string
+}
+
 export type HeaderNavModulesConfig = {
   home: boolean
   console: boolean
   pricing: HeaderNavPricingConfig
   docs: boolean
   about: boolean
-  [key: string]: boolean | HeaderNavPricingConfig
+  customExternalLink: HeaderNavExternalLinkConfig
+  customExternalLinks: HeaderNavExternalLinkConfig[]
+  [key: string]:
+    | boolean
+    | HeaderNavPricingConfig
+    | HeaderNavExternalLinkConfig
+    | HeaderNavExternalLinkConfig[]
 }
 
 export type SidebarSectionConfig = {
@@ -30,6 +42,12 @@ export const HEADER_NAV_DEFAULT: HeaderNavModulesConfig = {
   },
   docs: true,
   about: true,
+  customExternalLink: {
+    enabled: false,
+    text: '',
+    url: '',
+  },
+  customExternalLinks: [],
 }
 
 export const SIDEBAR_MODULES_DEFAULT: SidebarModulesAdminConfig = {
@@ -91,7 +109,42 @@ const toBoolean = (value: unknown, fallback: boolean): boolean => {
 const cloneHeaderNavDefault = (): HeaderNavModulesConfig => ({
   ...HEADER_NAV_DEFAULT,
   pricing: { ...HEADER_NAV_DEFAULT.pricing },
+  customExternalLink: { ...HEADER_NAV_DEFAULT.customExternalLink },
+  customExternalLinks: [...HEADER_NAV_DEFAULT.customExternalLinks],
 })
+
+const normalizeExternalLink = (
+  raw: unknown,
+  fallback: HeaderNavExternalLinkConfig
+): HeaderNavExternalLinkConfig => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ...fallback }
+  }
+  const link = raw as Record<string, unknown>
+  return {
+    enabled: toBoolean(link.enabled, fallback.enabled),
+    text: typeof link.text === 'string' ? link.text.trim() : fallback.text,
+    url: typeof link.url === 'string' ? link.url.trim() : fallback.url,
+  }
+}
+
+const normalizeExternalLinks = (
+  raw: unknown,
+  fallback: HeaderNavExternalLinkConfig[]
+): HeaderNavExternalLinkConfig[] => {
+  if (!Array.isArray(raw)) {
+    return [...fallback]
+  }
+  return raw
+    .map((item) =>
+      normalizeExternalLink(item, {
+        enabled: false,
+        text: '',
+        url: '',
+      })
+    )
+    .slice(0, 20)
+}
 
 const cloneSidebarDefault = (): SidebarModulesAdminConfig =>
   Object.entries(SIDEBAR_MODULES_DEFAULT).reduce<SidebarModulesAdminConfig>(
@@ -114,6 +167,8 @@ export function parseHeaderNavModules(
     const result: HeaderNavModulesConfig = {
       ...base,
       pricing: { ...base.pricing },
+      customExternalLink: { ...base.customExternalLink },
+      customExternalLinks: [...base.customExternalLinks],
     }
 
     Object.entries(parsed).forEach(([key, raw]) => {
@@ -134,6 +189,22 @@ export function parseHeaderNavModules(
         return
       }
 
+      if (key === 'customExternalLink') {
+        result.customExternalLink = normalizeExternalLink(
+          raw,
+          base.customExternalLink
+        )
+        return
+      }
+
+      if (key === 'customExternalLinks') {
+        result.customExternalLinks = normalizeExternalLinks(
+          raw,
+          base.customExternalLinks
+        )
+        return
+      }
+
       if (typeof raw === 'boolean') {
         result[key] = raw
         return
@@ -144,6 +215,15 @@ export function parseHeaderNavModules(
       }
     })
 
+    if (
+      result.customExternalLinks.length === 0 &&
+      (result.customExternalLink.enabled ||
+        result.customExternalLink.text !== '' ||
+        result.customExternalLink.url !== '')
+    ) {
+      result.customExternalLinks = [{ ...result.customExternalLink }]
+    }
+
     return result
   } catch {
     return base
@@ -153,7 +233,34 @@ export function parseHeaderNavModules(
 export function serializeHeaderNavModules(
   config: HeaderNavModulesConfig
 ): string {
-  return JSON.stringify(config)
+  const customExternalLinks = normalizeExternalLinks(
+    config.customExternalLinks,
+    HEADER_NAV_DEFAULT.customExternalLinks
+  )
+  const fallbackExternalLink =
+    customExternalLinks[0] ?? HEADER_NAV_DEFAULT.customExternalLink
+
+  const normalized: HeaderNavModulesConfig = {
+    ...config,
+    home: toBoolean(config.home, HEADER_NAV_DEFAULT.home),
+    console: toBoolean(config.console, HEADER_NAV_DEFAULT.console),
+    docs: toBoolean(config.docs, HEADER_NAV_DEFAULT.docs),
+    about: toBoolean(config.about, HEADER_NAV_DEFAULT.about),
+    pricing: {
+      enabled: toBoolean(config.pricing?.enabled, HEADER_NAV_DEFAULT.pricing.enabled),
+      requireAuth: toBoolean(
+        config.pricing?.requireAuth,
+        HEADER_NAV_DEFAULT.pricing.requireAuth
+      ),
+    },
+    customExternalLink: normalizeExternalLink(
+      config.customExternalLink ?? fallbackExternalLink,
+      fallbackExternalLink
+    ),
+    customExternalLinks,
+  }
+
+  return JSON.stringify(normalized)
 }
 
 export function parseSidebarModulesAdmin(

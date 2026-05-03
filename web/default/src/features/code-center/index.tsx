@@ -58,7 +58,7 @@ export function CodeCenter() {
             <h3 className='mb-4 text-lg font-semibold'>
               {t('Registration Codes')}
             </h3>
-            <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-5'>
+            <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
               <StatCard
                 title={t('Total')}
                 value={regStats?.total || 0}
@@ -74,16 +74,6 @@ export function CodeCenter() {
                 value={regStats?.disabled || 0}
                 isLoading={isLoading}
               />
-              <StatCard
-                title={t('Used')}
-                value={regStats?.used || 0}
-                isLoading={isLoading}
-              />
-              <StatCard
-                title={t('Expired')}
-                value={regStats?.expired || 0}
-                isLoading={isLoading}
-              />
             </div>
           </div>
 
@@ -91,7 +81,7 @@ export function CodeCenter() {
             <h3 className='mb-4 text-lg font-semibold'>
               {t('Subscription Codes')}
             </h3>
-            <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-5'>
+            <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
               <StatCard
                 title={t('Total')}
                 value={subStats?.total || 0}
@@ -105,16 +95,6 @@ export function CodeCenter() {
               <StatCard
                 title={t('Disabled')}
                 value={subStats?.disabled || 0}
-                isLoading={isLoading}
-              />
-              <StatCard
-                title={t('Used')}
-                value={subStats?.used || 0}
-                isLoading={isLoading}
-              />
-              <StatCard
-                title={t('Expired')}
-                value={subStats?.expired || 0}
                 isLoading={isLoading}
               />
             </div>

@@ -86,7 +86,7 @@ export function transformRegistrationCodeToFormDefaults(
     channel: code.channel || '',
     source_platform: code.source_platform || '',
     external_order_no: code.external_order_no || '',
-    max_uses: code.max_uses || 1,
+    max_uses: code.max_uses ?? 1,
     expires_at:
       code.expires_at > 0 ? new Date(code.expires_at * 1000) : undefined,
     count: 1,

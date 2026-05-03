@@ -88,24 +88,35 @@ export function SubscriptionCodesTable() {
     ],
   })
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: [
       'subscription-codes',
       pagination.pageIndex + 1,
       pagination.pageSize,
       globalFilter,
+      columnFilters,
       refreshTrigger,
     ],
     queryFn: async () => {
-      const hasFilter = globalFilter?.trim()
-      const params = {
+      const filterText = globalFilter ?? ''
+      const hasFilter = filterText.trim()
+      const params: Record<string, string | number> = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
       }
 
+      for (const filter of columnFilters) {
+        if (filter.value == null) continue
+        const values = Array.isArray(filter.value) ? filter.value : [filter.value]
+        const joined = values.join(',')
+        if (joined) {
+          params[filter.id] = joined
+        }
+      }
+
       const result = hasFilter
         ? await searchSubscriptionCodes(
-            globalFilter,
+            filterText,
             pagination.pageIndex + 1,
             pagination.pageSize
           )
@@ -166,9 +177,7 @@ export function SubscriptionCodesTable() {
     <div className='flex flex-1 flex-col gap-3 sm:gap-4'>
       <DataTableToolbar
         table={table}
-        globalFilter={globalFilter}
-        onGlobalFilterChange={onGlobalFilterChange}
-        globalFilterPlaceholder={t('Filter subscription codes...')}
+        searchPlaceholder={t('Filter subscription codes...')}
         filters={[
           {
             columnId: 'status',
@@ -185,42 +194,17 @@ export function SubscriptionCodesTable() {
 
       <DataTableBulkActions table={table} />
 
-      {isLoading ? (
-        <TableSkeleton columns={6} rows={isMobile ? 5 : 10} />
-      ) : tableData.length === 0 ? (
-        <TableEmpty
-          title={t('No subscription codes found')}
-          description={t(
-            'Create your first subscription code to get started.'
-          )}
-        />
-      ) : isMobile ? (
+      {isMobile ? (
         <MobileCardList
           table={table}
-          renderCard={(row) => {
-            const code = row.original
-            const isDisabled = isDisabledRow(code)
-            return (
-              <div
-                className={cn(
-                  'flex flex-col gap-1.5',
-                  isDisabled && DISABLED_ROW_MOBILE
-                )}
-              >
-                <div className='flex items-center justify-between'>
-                  <span className='font-medium'>{code.name}</span>
-                  <span className='text-muted-foreground text-xs'>
-                    #{code.id}
-                  </span>
-                </div>
-                <div className='text-muted-foreground text-xs'>
-                  {code.code
-                    ? `${code.code.slice(0, 12)}...`
-                    : t('No code')}
-                </div>
-              </div>
-            )
-          }}
+          isLoading={isLoading}
+          emptyTitle={t('No subscription codes found')}
+          emptyDescription={t(
+            'Create your first subscription code to get started.'
+          )}
+          getRowClassName={(row) =>
+            isDisabledRow(row.original) ? DISABLED_ROW_MOBILE : undefined
+          }
         />
       ) : (
         <div className='rounded-md border'>
@@ -242,7 +226,12 @@ export function SubscriptionCodesTable() {
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
+              {isLoading ? (
+                <TableSkeleton
+                  table={table}
+                  keyPrefix='subscription-codes-skeleton'
+                />
+              ) : table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => {
                   const isDisabled = isDisabledRow(row.original)
                   return (
@@ -263,14 +252,13 @@ export function SubscriptionCodesTable() {
                   )
                 })
               ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className='h-24 text-center'
-                  >
-                    {t('No results.')}
-                  </TableCell>
-                </TableRow>
+                <TableEmpty
+                  colSpan={columns.length}
+                  title={t('No subscription codes found')}
+                  description={t(
+                    'Create your first subscription code to get started.'
+                  )}
+                />
               )}
             </TableBody>
           </Table>
@@ -280,8 +268,6 @@ export function SubscriptionCodesTable() {
       <PageFooterPortal>
         <DataTablePagination
           table={table}
-          totalCount={totalCount}
-          isFetching={isFetching}
         />
       </PageFooterPortal>
     </div>

@@ -37,12 +37,19 @@ import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedUsageLogsIndexRouteImport } from './routes/_authenticated/usage-logs/index'
 import { Route as AuthenticatedSystemSettingsIndexRouteImport } from './routes/_authenticated/system-settings/index'
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
+import { Route as AuthenticatedSubscriptionCodesIndexRouteImport } from './routes/_authenticated/subscription-codes/index'
+import { Route as AuthenticatedRegistrationCodesIndexRouteImport } from './routes/_authenticated/registration-codes/index'
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
 import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
 import { Route as AuthenticatedPlaygroundIndexRouteImport } from './routes/_authenticated/playground/index'
+import { Route as AuthenticatedOrderClaimIndexRouteImport } from './routes/_authenticated/order-claim/index'
+import { Route as AuthenticatedOrderClaimAdminIndexRouteImport } from './routes/_authenticated/order-claim-admin/index'
 import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenticated/models/index'
+import { Route as AuthenticatedMidjourneyIndexRouteImport } from './routes/_authenticated/midjourney/index'
 import { Route as AuthenticatedKeysIndexRouteImport } from './routes/_authenticated/keys/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as AuthenticatedCodePublicationIndexRouteImport } from './routes/_authenticated/code-publication/index'
+import { Route as AuthenticatedCodeCenterIndexRouteImport } from './routes/_authenticated/code-center/index'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedUsageLogsSectionRouteImport } from './routes/_authenticated/usage-logs/$section'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
@@ -208,6 +215,18 @@ const AuthenticatedSubscriptionsIndexRoute =
     path: '/subscriptions/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSubscriptionCodesIndexRoute =
+  AuthenticatedSubscriptionCodesIndexRouteImport.update({
+    id: '/subscription-codes/',
+    path: '/subscription-codes/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRegistrationCodesIndexRoute =
+  AuthenticatedRegistrationCodesIndexRouteImport.update({
+    id: '/registration-codes/',
+    path: '/registration-codes/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedRedemptionCodesIndexRoute =
   AuthenticatedRedemptionCodesIndexRouteImport.update({
     id: '/redemption-codes/',
@@ -226,10 +245,28 @@ const AuthenticatedPlaygroundIndexRoute =
     path: '/playground/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedOrderClaimIndexRoute =
+  AuthenticatedOrderClaimIndexRouteImport.update({
+    id: '/order-claim/',
+    path: '/order-claim/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedOrderClaimAdminIndexRoute =
+  AuthenticatedOrderClaimAdminIndexRouteImport.update({
+    id: '/order-claim-admin/',
+    path: '/order-claim-admin/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedModelsIndexRoute =
   AuthenticatedModelsIndexRouteImport.update({
     id: '/models/',
     path: '/models/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMidjourneyIndexRoute =
+  AuthenticatedMidjourneyIndexRouteImport.update({
+    id: '/midjourney/',
+    path: '/midjourney/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedKeysIndexRoute = AuthenticatedKeysIndexRouteImport.update({
@@ -241,6 +278,18 @@ const AuthenticatedDashboardIndexRoute =
   AuthenticatedDashboardIndexRouteImport.update({
     id: '/dashboard/',
     path: '/dashboard/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCodePublicationIndexRoute =
+  AuthenticatedCodePublicationIndexRouteImport.update({
+    id: '/code-publication/',
+    path: '/code-publication/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCodeCenterIndexRoute =
+  AuthenticatedCodeCenterIndexRouteImport.update({
+    id: '/code-center/',
+    path: '/code-center/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedChannelsIndexRoute =
@@ -396,12 +445,19 @@ export interface FileRoutesByFullPath {
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/code-center/': typeof AuthenticatedCodeCenterIndexRoute
+  '/code-publication/': typeof AuthenticatedCodePublicationIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/keys/': typeof AuthenticatedKeysIndexRoute
+  '/midjourney/': typeof AuthenticatedMidjourneyIndexRoute
   '/models/': typeof AuthenticatedModelsIndexRoute
+  '/order-claim-admin/': typeof AuthenticatedOrderClaimAdminIndexRoute
+  '/order-claim/': typeof AuthenticatedOrderClaimIndexRoute
   '/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/profile/': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
+  '/registration-codes/': typeof AuthenticatedRegistrationCodesIndexRoute
+  '/subscription-codes/': typeof AuthenticatedSubscriptionCodesIndexRoute
   '/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
   '/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/usage-logs/': typeof AuthenticatedUsageLogsIndexRoute
@@ -450,12 +506,19 @@ export interface FileRoutesByTo {
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
+  '/code-center': typeof AuthenticatedCodeCenterIndexRoute
+  '/code-publication': typeof AuthenticatedCodePublicationIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/keys': typeof AuthenticatedKeysIndexRoute
+  '/midjourney': typeof AuthenticatedMidjourneyIndexRoute
   '/models': typeof AuthenticatedModelsIndexRoute
+  '/order-claim-admin': typeof AuthenticatedOrderClaimAdminIndexRoute
+  '/order-claim': typeof AuthenticatedOrderClaimIndexRoute
   '/playground': typeof AuthenticatedPlaygroundIndexRoute
   '/profile': typeof AuthenticatedProfileIndexRoute
   '/redemption-codes': typeof AuthenticatedRedemptionCodesIndexRoute
+  '/registration-codes': typeof AuthenticatedRegistrationCodesIndexRoute
+  '/subscription-codes': typeof AuthenticatedSubscriptionCodesIndexRoute
   '/subscriptions': typeof AuthenticatedSubscriptionsIndexRoute
   '/system-settings': typeof AuthenticatedSystemSettingsIndexRoute
   '/usage-logs': typeof AuthenticatedUsageLogsIndexRoute
@@ -508,12 +571,19 @@ export interface FileRoutesById {
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/_authenticated/code-center/': typeof AuthenticatedCodeCenterIndexRoute
+  '/_authenticated/code-publication/': typeof AuthenticatedCodePublicationIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
+  '/_authenticated/midjourney/': typeof AuthenticatedMidjourneyIndexRoute
   '/_authenticated/models/': typeof AuthenticatedModelsIndexRoute
+  '/_authenticated/order-claim-admin/': typeof AuthenticatedOrderClaimAdminIndexRoute
+  '/_authenticated/order-claim/': typeof AuthenticatedOrderClaimIndexRoute
   '/_authenticated/playground/': typeof AuthenticatedPlaygroundIndexRoute
   '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
   '/_authenticated/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
+  '/_authenticated/registration-codes/': typeof AuthenticatedRegistrationCodesIndexRoute
+  '/_authenticated/subscription-codes/': typeof AuthenticatedSubscriptionCodesIndexRoute
   '/_authenticated/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
   '/_authenticated/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/_authenticated/usage-logs/': typeof AuthenticatedUsageLogsIndexRoute
@@ -565,12 +635,19 @@ export interface FileRouteTypes {
     | '/models/$section'
     | '/usage-logs/$section'
     | '/channels/'
+    | '/code-center/'
+    | '/code-publication/'
     | '/dashboard/'
     | '/keys/'
+    | '/midjourney/'
     | '/models/'
+    | '/order-claim-admin/'
+    | '/order-claim/'
     | '/playground/'
     | '/profile/'
     | '/redemption-codes/'
+    | '/registration-codes/'
+    | '/subscription-codes/'
     | '/subscriptions/'
     | '/system-settings/'
     | '/usage-logs/'
@@ -619,12 +696,19 @@ export interface FileRouteTypes {
     | '/models/$section'
     | '/usage-logs/$section'
     | '/channels'
+    | '/code-center'
+    | '/code-publication'
     | '/dashboard'
     | '/keys'
+    | '/midjourney'
     | '/models'
+    | '/order-claim-admin'
+    | '/order-claim'
     | '/playground'
     | '/profile'
     | '/redemption-codes'
+    | '/registration-codes'
+    | '/subscription-codes'
     | '/subscriptions'
     | '/system-settings'
     | '/usage-logs'
@@ -676,12 +760,19 @@ export interface FileRouteTypes {
     | '/_authenticated/models/$section'
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/channels/'
+    | '/_authenticated/code-center/'
+    | '/_authenticated/code-publication/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/keys/'
+    | '/_authenticated/midjourney/'
     | '/_authenticated/models/'
+    | '/_authenticated/order-claim-admin/'
+    | '/_authenticated/order-claim/'
     | '/_authenticated/playground/'
     | '/_authenticated/profile/'
     | '/_authenticated/redemption-codes/'
+    | '/_authenticated/registration-codes/'
+    | '/_authenticated/subscription-codes/'
     | '/_authenticated/subscriptions/'
     | '/_authenticated/system-settings/'
     | '/_authenticated/usage-logs/'
@@ -920,6 +1011,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSubscriptionsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/subscription-codes/': {
+      id: '/_authenticated/subscription-codes/'
+      path: '/subscription-codes'
+      fullPath: '/subscription-codes/'
+      preLoaderRoute: typeof AuthenticatedSubscriptionCodesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/registration-codes/': {
+      id: '/_authenticated/registration-codes/'
+      path: '/registration-codes'
+      fullPath: '/registration-codes/'
+      preLoaderRoute: typeof AuthenticatedRegistrationCodesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/redemption-codes/': {
       id: '/_authenticated/redemption-codes/'
       path: '/redemption-codes'
@@ -941,11 +1046,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlaygroundIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/order-claim/': {
+      id: '/_authenticated/order-claim/'
+      path: '/order-claim'
+      fullPath: '/order-claim/'
+      preLoaderRoute: typeof AuthenticatedOrderClaimIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/order-claim-admin/': {
+      id: '/_authenticated/order-claim-admin/'
+      path: '/order-claim-admin'
+      fullPath: '/order-claim-admin/'
+      preLoaderRoute: typeof AuthenticatedOrderClaimAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/models/': {
       id: '/_authenticated/models/'
       path: '/models'
       fullPath: '/models/'
       preLoaderRoute: typeof AuthenticatedModelsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/midjourney/': {
+      id: '/_authenticated/midjourney/'
+      path: '/midjourney'
+      fullPath: '/midjourney/'
+      preLoaderRoute: typeof AuthenticatedMidjourneyIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/keys/': {
@@ -960,6 +1086,20 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard/'
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/code-publication/': {
+      id: '/_authenticated/code-publication/'
+      path: '/code-publication'
+      fullPath: '/code-publication/'
+      preLoaderRoute: typeof AuthenticatedCodePublicationIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/code-center/': {
+      id: '/_authenticated/code-center/'
+      path: '/code-center'
+      fullPath: '/code-center/'
+      preLoaderRoute: typeof AuthenticatedCodeCenterIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/channels/': {
@@ -1202,12 +1342,19 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
+  AuthenticatedCodeCenterIndexRoute: typeof AuthenticatedCodeCenterIndexRoute
+  AuthenticatedCodePublicationIndexRoute: typeof AuthenticatedCodePublicationIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
+  AuthenticatedMidjourneyIndexRoute: typeof AuthenticatedMidjourneyIndexRoute
   AuthenticatedModelsIndexRoute: typeof AuthenticatedModelsIndexRoute
+  AuthenticatedOrderClaimAdminIndexRoute: typeof AuthenticatedOrderClaimAdminIndexRoute
+  AuthenticatedOrderClaimIndexRoute: typeof AuthenticatedOrderClaimIndexRoute
   AuthenticatedPlaygroundIndexRoute: typeof AuthenticatedPlaygroundIndexRoute
   AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
   AuthenticatedRedemptionCodesIndexRoute: typeof AuthenticatedRedemptionCodesIndexRoute
+  AuthenticatedRegistrationCodesIndexRoute: typeof AuthenticatedRegistrationCodesIndexRoute
+  AuthenticatedSubscriptionCodesIndexRoute: typeof AuthenticatedSubscriptionCodesIndexRoute
   AuthenticatedSubscriptionsIndexRoute: typeof AuthenticatedSubscriptionsIndexRoute
   AuthenticatedUsageLogsIndexRoute: typeof AuthenticatedUsageLogsIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
@@ -1224,13 +1371,24 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
+  AuthenticatedCodeCenterIndexRoute: AuthenticatedCodeCenterIndexRoute,
+  AuthenticatedCodePublicationIndexRoute:
+    AuthenticatedCodePublicationIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
+  AuthenticatedMidjourneyIndexRoute: AuthenticatedMidjourneyIndexRoute,
   AuthenticatedModelsIndexRoute: AuthenticatedModelsIndexRoute,
+  AuthenticatedOrderClaimAdminIndexRoute:
+    AuthenticatedOrderClaimAdminIndexRoute,
+  AuthenticatedOrderClaimIndexRoute: AuthenticatedOrderClaimIndexRoute,
   AuthenticatedPlaygroundIndexRoute: AuthenticatedPlaygroundIndexRoute,
   AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
   AuthenticatedRedemptionCodesIndexRoute:
     AuthenticatedRedemptionCodesIndexRoute,
+  AuthenticatedRegistrationCodesIndexRoute:
+    AuthenticatedRegistrationCodesIndexRoute,
+  AuthenticatedSubscriptionCodesIndexRoute:
+    AuthenticatedSubscriptionCodesIndexRoute,
   AuthenticatedSubscriptionsIndexRoute: AuthenticatedSubscriptionsIndexRoute,
   AuthenticatedUsageLogsIndexRoute: AuthenticatedUsageLogsIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,

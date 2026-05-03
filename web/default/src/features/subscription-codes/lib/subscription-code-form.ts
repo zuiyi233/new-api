@@ -67,11 +67,11 @@ export function transformFormDataToPayload(
     channel: data.channel || '',
     source_platform: data.source_platform || '',
     external_order_no: data.external_order_no || '',
-    max_uses: data.max_uses || 1,
+    max_uses: data.max_uses ?? 1,
     expires_at: data.expires_at
       ? Math.floor(data.expires_at.getTime() / 1000)
       : 0,
-    count: data.count || 1,
+    count: data.count ?? 1,
   }
 }
 
@@ -86,7 +86,7 @@ export function transformSubscriptionCodeToFormDefaults(
     channel: code.channel || '',
     source_platform: code.source_platform || '',
     external_order_no: code.external_order_no || '',
-    max_uses: code.max_uses || 1,
+    max_uses: code.max_uses ?? 1,
     expires_at:
       code.expires_at > 0 ? new Date(code.expires_at * 1000) : undefined,
     count: 1,

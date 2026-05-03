@@ -9,6 +9,51 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type codePublicationLegacyPublishInput struct {
+	PublicationID   int    `json:"publication_id"`
+	Action          string `json:"action"`
+	DeliveryChannel string `json:"delivery_channel"`
+	RevokeReason    string `json:"revoke_reason"`
+	Notes           string `json:"notes"`
+}
+
+type codePublicationLegacyPublishInputRaw struct {
+	PublicationID      int    `json:"publication_id"`
+	PublicationIDAlt   int    `json:"publicationId"`
+	PublicationIDByID  int    `json:"id"`
+	Action             string `json:"action"`
+	DeliveryChannel    string `json:"delivery_channel"`
+	DeliveryChannelAlt string `json:"deliveryChannel"`
+	RevokeReason       string `json:"revoke_reason"`
+	RevokeReasonAlt    string `json:"revokeReason"`
+	Notes              string `json:"notes"`
+}
+
+func (i *codePublicationLegacyPublishInput) UnmarshalJSON(data []byte) error {
+	var raw codePublicationLegacyPublishInputRaw
+	if err := common.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	i.PublicationID = raw.PublicationID
+	if i.PublicationID <= 0 {
+		i.PublicationID = raw.PublicationIDAlt
+	}
+	if i.PublicationID <= 0 {
+		i.PublicationID = raw.PublicationIDByID
+	}
+	i.Action = raw.Action
+	i.DeliveryChannel = raw.DeliveryChannel
+	if i.DeliveryChannel == "" {
+		i.DeliveryChannel = raw.DeliveryChannelAlt
+	}
+	i.RevokeReason = raw.RevokeReason
+	if i.RevokeReason == "" {
+		i.RevokeReason = raw.RevokeReasonAlt
+	}
+	i.Notes = raw.Notes
+	return nil
+}
+
 func buildCodePublicationQuery(c *gin.Context) (model.CodePublicationQuery, error) {
 	filters := model.CodePublicationQuery{
 		Keyword:            strings.TrimSpace(c.Query("keyword")),
@@ -235,6 +280,54 @@ func RollbackCodePublication(c *gin.Context) {
 		return
 	}
 	item, err := model.RollbackCodePublication(id, c.GetInt("id"), payload)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, item)
+}
+
+// PublishCodePublicationCompat keeps backward compatibility for legacy
+// /api/code-publication/publish clients by dispatching to the newer
+// /api/code-publication/:id/{reissue|revoke|rollback} actions.
+func PublishCodePublicationCompat(c *gin.Context) {
+	payload := &codePublicationLegacyPublishInput{}
+	if err := common.DecodeJson(c.Request.Body, payload); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	publicationID := payload.PublicationID
+	if publicationID <= 0 {
+		common.ApiErrorMsg(c, "publication_id is required")
+		return
+	}
+
+	action := strings.ToLower(strings.TrimSpace(payload.Action))
+	if action == "" {
+		action = "reissue"
+	}
+	actionInput := &model.CodePublicationActionInput{
+		DeliveryChannel: strings.TrimSpace(payload.DeliveryChannel),
+		RevokeReason:    strings.TrimSpace(payload.RevokeReason),
+		Notes:           strings.TrimSpace(payload.Notes),
+	}
+
+	var (
+		item *model.CodeDelivery
+		err  error
+	)
+	switch action {
+	case "reissue":
+		item, err = model.ReissueCodePublication(publicationID, c.GetInt("id"), actionInput)
+	case "revoke":
+		item, err = model.RevokeCodePublication(publicationID, c.GetInt("id"), actionInput)
+	case "rollback":
+		item, err = model.RollbackCodePublication(publicationID, c.GetInt("id"), actionInput)
+	default:
+		common.ApiErrorMsg(c, "unsupported action: "+action)
+		return
+	}
 	if err != nil {
 		common.ApiError(c, err)
 		return

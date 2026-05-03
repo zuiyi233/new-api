@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Copy, FileDown, RefreshCw } from 'lucide-react'
+import { FileDown, RefreshCw } from 'lucide-react'
 import {
   Dialog,
   DialogContent,

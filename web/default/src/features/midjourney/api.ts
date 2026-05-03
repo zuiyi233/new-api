@@ -2,6 +2,7 @@ import { api } from '@/lib/api'
 import type { MjLog, ApiResponse, GetMjLogsParams } from './types'
 
 export async function getMjLogs(
+  isAdmin: boolean,
   params: GetMjLogsParams = {}
 ): Promise<ApiResponse<{ items: MjLog[]; total: number }>> {
   const { p = 1, page_size = 10, ...filters } = params
@@ -15,17 +16,7 @@ export async function getMjLogs(
     }
   })
 
-  const res = await api.get(`/api/mj/?${searchParams.toString()}`)
-  return res.data
-}
-
-export async function searchMjLogs(
-  keyword: string,
-  p = 1,
-  page_size = 10
-): Promise<ApiResponse<{ items: MjLog[]; total: number }>> {
-  const res = await api.get(
-    `/api/mj/search?keyword=${encodeURIComponent(keyword)}&p=${p}&page_size=${page_size}`
-  )
+  const path = isAdmin ? '/api/mj/' : '/api/mj/self'
+  const res = await api.get(`${path}?${searchParams.toString()}`)
   return res.data
 }

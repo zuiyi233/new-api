@@ -2,6 +2,12 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
 import { useStatus } from '@/hooks/use-status'
+import {
+  HEADER_NAV_DEFAULT,
+  parseHeaderNavModules,
+  type HeaderNavExternalLinkConfig,
+  type HeaderNavModulesConfig,
+} from '@/features/system-settings/maintenance/config'
 
 export type TopNavLink = {
   title: string
@@ -10,13 +16,25 @@ export type TopNavLink = {
   external?: boolean
 }
 
-// Default navigation configuration
-const DEFAULT_HEADER_NAV_MODULES = {
-  home: true,
-  console: true,
-  pricing: { enabled: true, requireAuth: false },
-  docs: true,
-  about: true,
+const isSafeExternalUrl = (value: string): boolean => /^https?:\/\//i.test(value)
+
+const normalizeExternalLinks = (
+  modules: HeaderNavModulesConfig
+): HeaderNavExternalLinkConfig[] => {
+  if (modules.customExternalLinks.length > 0) {
+    return modules.customExternalLinks
+  }
+
+  if (
+    modules.customExternalLink &&
+    (modules.customExternalLink.enabled ||
+      modules.customExternalLink.text.trim() !== '' ||
+      modules.customExternalLink.url.trim() !== '')
+  ) {
+    return [modules.customExternalLink]
+  }
+
+  return []
 }
 
 /**
@@ -38,16 +56,9 @@ export function useTopNavLinks(): TopNavLink[] {
   // Parse HeaderNavModules
   const modules = useMemo(() => {
     const raw = status?.HeaderNavModules
-    // If empty string, null, or undefined, use default config
-    if (!raw || (raw as string).trim() === '') {
-      return DEFAULT_HEADER_NAV_MODULES
-    }
-    try {
-      return JSON.parse(raw as string)
-    } catch {
-      // Parse failed, use default config
-      return DEFAULT_HEADER_NAV_MODULES
-    }
+    return parseHeaderNavModules(
+      typeof raw === 'string' ? raw : JSON.stringify(HEADER_NAV_DEFAULT)
+    )
   }, [status?.HeaderNavModules])
 
   // Documentation link (may be external)
@@ -87,6 +98,20 @@ export function useTopNavLinks(): TopNavLink[] {
   if (modules?.about !== false) {
     links.push({ title: t('About'), href: '/about' })
   }
+
+  const customExternalLinks = normalizeExternalLinks(modules)
+  customExternalLinks.forEach((item) => {
+    const text = item.text.trim()
+    const url = item.url.trim()
+    if (!item.enabled || text === '' || url === '' || !isSafeExternalUrl(url)) {
+      return
+    }
+    links.push({
+      title: text,
+      href: url,
+      external: true,
+    })
+  })
 
   return links
 }

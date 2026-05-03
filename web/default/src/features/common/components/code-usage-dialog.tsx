@@ -52,13 +52,19 @@ export function CodeUsageDialog({
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [usages, setUsages] = useState<UsageRecord[]>([])
+  const usageQueryKey =
+    apiBasePath === '/api/registration-code'
+      ? 'registration_code_id'
+      : apiBasePath === '/api/subscription-code'
+        ? 'subscription_code_id'
+        : 'code_id'
 
   useEffect(() => {
     if (!open || !record?.id) return
     setLoading(true)
     api
       .get(
-        `${apiBasePath}/usage?code_id=${record.id}&p=1&page_size=100`
+        `${apiBasePath}/usage?${usageQueryKey}=${record.id}&p=1&page_size=100`
       )
       .then((res) => {
         const { success, data } = res.data
@@ -73,7 +79,7 @@ export function CodeUsageDialog({
       })
       .catch(() => toast.error(t('Failed to load usage records')))
       .finally(() => setLoading(false))
-  }, [open, record?.id, apiBasePath, t])
+  }, [open, record?.id, apiBasePath, usageQueryKey, t])
 
   const handleExport = () => {
     if (!usages.length) {

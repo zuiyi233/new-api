@@ -1,13 +1,21 @@
 export interface OrderClaim {
   id: number
   user_id: number
-  order_no: string
-  product_key: string
-  code_type: string
-  code: string
-  status: number
-  claimed_at: number
+  source_platform: string
+  external_order_no: string
+  buyer_contact: string
+  claimed_product: string
+  claim_note: string
+  claim_status: string
+  proof_images?: string[]
+  reviewer_id: number
+  review_note: string
+  reviewed_at: number
+  grant_type: string
+  granted_code: string
+  granted_subscription_id: number
   created_at: number
+  updated_at: number
 }
 
 export interface ApiResponse<T = unknown> {
@@ -17,14 +25,21 @@ export interface ApiResponse<T = unknown> {
 }
 
 export interface ClaimOrderParams {
-  order_no: string
-  product_key: string
-  code_type: string
+  source_platform: string
+  external_order_no: string
+  buyer_contact: string
+  claimed_product: string
+  proof_images?: string[]
+  claim_note?: string
 }
 
 export interface GetOrderClaimsParams {
   p?: number
   page_size?: number
+  keyword?: string
+  claim_status?: string
+  source_platform?: string
+  claimed_product?: string
   user_id?: number
-  status?: string
+  reviewer_id?: number
 }

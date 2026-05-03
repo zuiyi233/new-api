@@ -95,7 +95,7 @@ export async function getRegistrationCodeUsages(
   codeId: number
 ): Promise<ApiResponse<RegistrationCodeUsage[]>> {
   const res = await api.get(
-    `/api/registration-code/usage?code_id=${codeId}`
+    `/api/registration-code/usage?registration_code_id=${codeId}`
   )
   return res.data
 }

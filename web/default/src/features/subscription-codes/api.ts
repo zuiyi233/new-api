@@ -95,7 +95,7 @@ export async function getSubscriptionCodeUsages(
   codeId: number
 ): Promise<ApiResponse<SubscriptionCodeUsage[]>> {
   const res = await api.get(
-    `/api/subscription-code/usage?code_id=${codeId}`
+    `/api/subscription-code/usage?subscription_code_id=${codeId}`
   )
   return res.data
 }

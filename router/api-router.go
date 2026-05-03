@@ -368,11 +368,16 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			orderClaimRoute.GET("/self", controller.GetSelfOrderClaims)
 			orderClaimRoute.POST("/self", middleware.CriticalRateLimit(), controller.CreateOrderClaim)
+			// Backward compatibility for legacy clients.
+			orderClaimRoute.GET("/my", controller.GetSelfOrderClaims)
+			orderClaimRoute.POST("/claim", middleware.CriticalRateLimit(), controller.CreateOrderClaim)
 		}
 		orderClaimAdminRoute := apiRouter.Group("/order-claim/admin")
 		orderClaimAdminRoute.Use(middleware.AdminAuth())
 		{
 			orderClaimAdminRoute.GET("/", controller.GetAllOrderClaims)
+			// Backward compatibility for legacy clients.
+			orderClaimAdminRoute.GET("/search", controller.GetAllOrderClaims)
 			orderClaimAdminRoute.GET("/:id", controller.GetOrderClaim)
 			orderClaimAdminRoute.POST("/:id/review", controller.ReviewOrderClaim)
 		}
@@ -385,6 +390,8 @@ func SetApiRouter(router *gin.Engine) {
 			codePublicationAdminRoute.POST("/:id/reissue", controller.ReissueCodePublication)
 			codePublicationAdminRoute.POST("/:id/revoke", controller.RevokeCodePublication)
 			codePublicationAdminRoute.POST("/:id/rollback", controller.RollbackCodePublication)
+			// Backward compatibility for legacy clients.
+			codePublicationAdminRoute.POST("/publish", controller.PublishCodePublicationCompat)
 		}
 		codeDeliveryAdminRoute := apiRouter.Group("/code-delivery")
 		codeDeliveryAdminRoute.Use(middleware.AdminAuth())
@@ -397,6 +404,8 @@ func SetApiRouter(router *gin.Engine) {
 		codeCenterRoute := apiRouter.Group("/code-center")
 		codeCenterRoute.Use(middleware.AdminAuth())
 		{
+			// Backward compatibility for legacy clients.
+			codeCenterRoute.GET("/stats", controller.GetCodeCenterStatsCompat)
 			codeCenterRoute.GET("/history", controller.GetCodeOperationHistory)
 			codeCenterRoute.POST("/history/export", controller.CreateCodeOperationHistoryExportLog)
 		}
@@ -437,6 +446,8 @@ func SetApiRouter(router *gin.Engine) {
 		mjRoute := apiRouter.Group("/mj")
 		mjRoute.GET("/self", middleware.UserAuth(), controller.GetUserMidjourney)
 		mjRoute.GET("/", middleware.AdminAuth(), controller.GetAllMidjourney)
+		// Backward compatibility for legacy clients.
+		mjRoute.GET("/search", middleware.AdminAuth(), controller.GetAllMidjourney)
 
 		taskRoute := apiRouter.Group("/task")
 		{
