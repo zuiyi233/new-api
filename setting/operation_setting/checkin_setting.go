@@ -128,7 +128,7 @@ func defaultAdvancedRewardBands() []CheckinRewardBand {
 var checkinSetting = CheckinSetting{
 	Enabled: false,
 
-	EntryMinBalanceQuota: int(10 * common.QuotaPerUnit),
+	EntryMinBalanceQuota: 0,
 	EntryMaxBalanceQuota: int(49 * common.QuotaPerUnit),
 	EntryMinQuota:        int(0.01 * common.QuotaPerUnit),
 	EntryMaxQuota:        int(0.2 * common.QuotaPerUnit),

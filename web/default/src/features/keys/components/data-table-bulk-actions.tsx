@@ -13,6 +13,7 @@ import {
 import { DataTableBulkActions as BulkActionsToolbar } from '@/components/data-table'
 import { type ApiKey } from '../types'
 import { ApiKeysMultiDeleteDialog } from './api-keys-multi-delete-dialog'
+import { CopyKeysFormatDialog, type CopyFormat } from './copy-keys-format-dialog'
 import { useApiKeys } from './api-keys-provider'
 
 type DataTableBulkActionsProps<TData> = {
@@ -25,40 +26,50 @@ export function DataTableBulkActions<TData>({
   const { t } = useTranslation()
   const { resolveRealKeysBatch } = useApiKeys()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showFormatDialog, setShowFormatDialog] = useState(false)
   const [isCopying, setIsCopying] = useState(false)
   const selectedRows = table.getFilteredSelectedRowModel().rows
 
-  const handleBatchCopy = useCallback(async () => {
-    if (selectedRows.length === 0) return
+  const handleBatchCopy = useCallback(
+    async (format: CopyFormat) => {
+      if (selectedRows.length === 0) return
 
-    setIsCopying(true)
-    try {
-      const ids = selectedRows.map((row) => (row.original as ApiKey).id)
-      const keysMap = await resolveRealKeysBatch(ids)
+      setIsCopying(true)
+      try {
+        const ids = selectedRows.map((row) => (row.original as ApiKey).id)
+        const keysMap = await resolveRealKeysBatch(ids)
 
-      const lines: string[] = []
-      for (const row of selectedRows) {
-        const apiKey = row.original as ApiKey
-        const realKey = keysMap[apiKey.id]
-        if (realKey) {
-          lines.push(`${apiKey.name}\t${realKey}`)
+        const lines: string[] = []
+        for (const row of selectedRows) {
+          const apiKey = row.original as ApiKey
+          const realKey = keysMap[apiKey.id]
+          if (realKey) {
+            if (format === 'key_only') {
+              lines.push(realKey)
+            } else {
+              lines.push(`${apiKey.name}\t${realKey}`)
+            }
+          }
         }
-      }
 
-      if (lines.length > 0) {
-        const ok = await copyToClipboard(lines.join('\n'))
-        if (ok) {
-          toast.success(t('Copied {{count}} key(s)', { count: lines.length }))
-        } else {
-          toast.error(t('Failed to copy keys'))
+        if (lines.length > 0) {
+          const ok = await copyToClipboard(lines.join('\n'))
+          if (ok) {
+            toast.success(
+              t('Copied {{count}} key(s)', { count: lines.length })
+            )
+          } else {
+            toast.error(t('Failed to copy keys'))
+          }
         }
+      } catch {
+        toast.error(t('Failed to copy keys'))
+      } finally {
+        setIsCopying(false)
       }
-    } catch {
-      toast.error(t('Failed to copy keys'))
-    } finally {
-      setIsCopying(false)
-    }
-  }, [selectedRows, resolveRealKeysBatch, t])
+    },
+    [selectedRows, resolveRealKeysBatch, t]
+  )
 
   return (
     <>
@@ -69,7 +80,7 @@ export function DataTableBulkActions<TData>({
               variant='outline'
               size='icon'
               className='size-8'
-              onClick={handleBatchCopy}
+              onClick={() => setShowFormatDialog(true)}
               disabled={isCopying}
               aria-label={t('Copy selected keys')}
             >
@@ -95,7 +106,9 @@ export function DataTableBulkActions<TData>({
               aria-label={t('Delete selected API keys')}
             >
               <Trash2 />
-              <span className='sr-only'>{t('Delete selected API keys')}</span>
+              <span className='sr-only'>
+                {t('Delete selected API keys')}
+              </span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -103,6 +116,12 @@ export function DataTableBulkActions<TData>({
           </TooltipContent>
         </Tooltip>
       </BulkActionsToolbar>
+
+      <CopyKeysFormatDialog
+        open={showFormatDialog}
+        onOpenChange={setShowFormatDialog}
+        onConfirm={handleBatchCopy}
+      />
 
       <ApiKeysMultiDeleteDialog
         open={showDeleteConfirm}

@@ -22,13 +22,19 @@ import {
   Send,
   BarChart3,
   Image,
+  Gift,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { WORKSPACE_IDS } from '@/components/layout/lib/workspace-registry'
 import { type SidebarData } from '@/components/layout/types'
+import { useStatus } from '@/hooks/use-status'
 
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const checkinEnabled = status?.checkin_enabled === true
+  const lotteryEnabled = status?.lottery_enabled === true
+  const welfareEnabled = checkinEnabled || lotteryEnabled
 
   return {
     workspaces: [
@@ -103,6 +109,15 @@ export function useSidebarData(): SidebarData {
             url: '/wallet',
             icon: Wallet,
           },
+          ...(welfareEnabled
+            ? [
+                {
+                  title: t('Welfare Activities'),
+                  url: '/welfare',
+                  icon: Gift,
+                },
+              ]
+            : []),
           {
             title: t('Profile'),
             url: '/profile',

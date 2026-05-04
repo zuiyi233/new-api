@@ -14,9 +14,10 @@ const (
 
 var (
 	RelayConcurrencyEnabled       = false
-	GlobalDefaultConcurrency      = 3
+	GlobalDefaultConcurrency      = 2
 	ConcurrencyCodeOverridePolicy = ConcurrencyCodeOverridePolicyMax
 	ConcurrencyCounterTtlSeconds  = 600
+	ConcurrencyQueueWaitMs        = 5000
 )
 
 func NormalizeConcurrencyCodeOverridePolicy(raw string) string {
@@ -46,6 +47,17 @@ func ValidateConcurrencyCounterTtlSeconds(raw string) error {
 	}
 	if value > 24*60*60 {
 		return fmt.Errorf("并发计数 TTL 不能超过 86400 秒")
+	}
+	return nil
+}
+
+func ValidateConcurrencyQueueWaitMs(raw string) error {
+	value, err := parsePositiveInt(raw)
+	if err != nil {
+		return fmt.Errorf("并发排队等待时间必须是正整数毫秒")
+	}
+	if value > 60000 {
+		return fmt.Errorf("并发排队等待时间不能超过 60000 毫秒")
 	}
 	return nil
 }

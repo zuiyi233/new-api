@@ -31,6 +31,7 @@ const createConcurrencySchema = (_t: (key: string) => string) =>
     GlobalDefaultConcurrency: z.number().min(1).max(2147483647),
     ConcurrencyCodeOverridePolicy: z.string(),
     ConcurrencyCounterTtlSeconds: z.number().min(1).max(86400),
+    ConcurrencyQueueWaitMs: z.number().min(1).max(60000),
   })
 
 type ConcurrencyFormValues = z.infer<ReturnType<typeof createConcurrencySchema>>
@@ -194,6 +195,39 @@ export function ConcurrencySection({ defaultValues }: ConcurrencySectionProps) {
                   <FormDescription>
                     {t(
                       'Keep-alive duration for concurrency slots (recommended: 60–600s)'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='ConcurrencyQueueWaitMs'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Queue wait timeout')}</FormLabel>
+                  <FormControl>
+                    <div className='flex items-center gap-2'>
+                      <Input
+                        type='number'
+                        min={1}
+                        max={60000}
+                        step={1}
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(parseInt(e.target.value) || 1)
+                        }
+                      />
+                      <span className='text-muted-foreground text-sm'>
+                        {t('ms')}
+                      </span>
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'How long a request waits in queue before returning 429 when concurrency is full'
                     )}
                   </FormDescription>
                   <FormMessage />

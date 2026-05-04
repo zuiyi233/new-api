@@ -37,6 +37,7 @@ const REQUEST_LIMITS_SECTIONS = [
             settings.ConcurrencyCodeOverridePolicy,
           ConcurrencyCounterTtlSeconds:
             settings.ConcurrencyCounterTtlSeconds,
+          ConcurrencyQueueWaitMs: settings.ConcurrencyQueueWaitMs,
         }}
       />
     ),

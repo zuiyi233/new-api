@@ -23,9 +23,10 @@ const defaultRequestLimitsSettings: RequestLimitsSettings = {
   'fetch_setting.allowed_ports': [],
   'fetch_setting.apply_ip_filter_for_domain': false,
   RelayConcurrencyEnabled: false,
-  GlobalDefaultConcurrency: 3,
+  GlobalDefaultConcurrency: 2,
   ConcurrencyCodeOverridePolicy: 'max',
   ConcurrencyCounterTtlSeconds: 600,
+  ConcurrencyQueueWaitMs: 5000,
 }
 
 export function RequestLimitsSettings() {

@@ -51,6 +51,10 @@ type RewardBand = {
 const schema = z
   .object({
     enabled: z.boolean(),
+    lotteryEnabled: z.boolean(),
+    lotteryBasicTierMultiplier: z.coerce.number().gt(0).max(100),
+    lotteryMediumTierMultiplier: z.coerce.number().gt(0).max(100),
+    lotteryAdvancedTierMultiplier: z.coerce.number().gt(0).max(100),
 
     entryMinBalanceQuota: z.coerce.number().min(0),
     entryMaxBalanceQuota: z.coerce.number().min(0),
@@ -185,6 +189,10 @@ const tierValidationRules: TierValidationRule[] = [
 
 type CheckinDefaultValues = {
   enabled: boolean
+  lotteryEnabled: boolean
+  lotteryBasicTierMultiplier: number
+  lotteryMediumTierMultiplier: number
+  lotteryAdvancedTierMultiplier: number
   entryMinBalanceQuota: number
   entryMaxBalanceQuota: number
   entryMinQuota: number
@@ -550,6 +558,19 @@ export function CheckinSettingsSection({
   const normalizedDefaults = useMemo<Values>(
     () => ({
       enabled: defaultValues.enabled,
+      lotteryEnabled: defaultValues.lotteryEnabled,
+      lotteryBasicTierMultiplier: toAmount(
+        defaultValues.lotteryBasicTierMultiplier,
+        0.6
+      ),
+      lotteryMediumTierMultiplier: toAmount(
+        defaultValues.lotteryMediumTierMultiplier,
+        1
+      ),
+      lotteryAdvancedTierMultiplier: toAmount(
+        defaultValues.lotteryAdvancedTierMultiplier,
+        1.8
+      ),
       entryMinBalanceQuota: toAmount(defaultValues.entryMinBalanceQuota, 0),
       entryMaxBalanceQuota: toAmount(defaultValues.entryMaxBalanceQuota, 0),
       entryMinQuota: toAmount(defaultValues.entryMinQuota, 0),
@@ -625,10 +646,29 @@ export function CheckinSettingsSection({
         DEFAULT_ADVANCED_BANDS
       ),
       rewardRule: normalizeRewardRule(values.rewardRule),
+      lotteryBasicTierMultiplier: toAmount(values.lotteryBasicTierMultiplier, 0.6),
+      lotteryMediumTierMultiplier: toAmount(values.lotteryMediumTierMultiplier, 1),
+      lotteryAdvancedTierMultiplier: toAmount(
+        values.lotteryAdvancedTierMultiplier,
+        1.8
+      ),
     }
 
     const updates = [
       { key: 'checkin_setting.enabled', value: normalizedValues.enabled },
+      { key: 'lottery_setting.enabled', value: normalizedValues.lotteryEnabled },
+      {
+        key: 'lottery_setting.basic_tier_multiplier',
+        value: normalizedValues.lotteryBasicTierMultiplier,
+      },
+      {
+        key: 'lottery_setting.medium_tier_multiplier',
+        value: normalizedValues.lotteryMediumTierMultiplier,
+      },
+      {
+        key: 'lottery_setting.advanced_tier_multiplier',
+        value: normalizedValues.lotteryAdvancedTierMultiplier,
+      },
       {
         key: 'checkin_setting.entry_min_balance_quota',
         value: normalizedValues.entryMinBalanceQuota,
@@ -697,6 +737,14 @@ export function CheckinSettingsSection({
         switch (update.key) {
           case 'checkin_setting.enabled':
             return normalizedDefaults.enabled
+          case 'lottery_setting.enabled':
+            return normalizedDefaults.lotteryEnabled
+          case 'lottery_setting.basic_tier_multiplier':
+            return normalizedDefaults.lotteryBasicTierMultiplier
+          case 'lottery_setting.medium_tier_multiplier':
+            return normalizedDefaults.lotteryMediumTierMultiplier
+          case 'lottery_setting.advanced_tier_multiplier':
+            return normalizedDefaults.lotteryAdvancedTierMultiplier
           case 'checkin_setting.entry_min_balance_quota':
             return normalizedDefaults.entryMinBalanceQuota
           case 'checkin_setting.entry_max_balance_quota':
@@ -788,6 +836,99 @@ export function CheckinSettingsSection({
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name='lotteryEnabled'
+            render={({ field }) => (
+              <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                <div className='space-y-0.5'>
+                  <FormLabel className='text-base'>
+                    {t('Enable lottery feature')}
+                  </FormLabel>
+                  <FormDescription>
+                    {t('Show the lottery module and allow users to participate')}
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={updateOption.isPending || isSubmitting}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <div className='grid gap-4 md:grid-cols-3'>
+            <FormField
+              control={form.control}
+              name='lotteryBasicTierMultiplier'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Lottery low tier multiplier')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={0.01}
+                      max={100}
+                      step='0.01'
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('Multiplier applied to low-tier lottery rewards.')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='lotteryMediumTierMultiplier'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Lottery medium tier multiplier')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={0.01}
+                      max={100}
+                      step='0.01'
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('Multiplier applied to medium-tier lottery rewards.')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='lotteryAdvancedTierMultiplier'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Lottery high tier multiplier')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      type='number'
+                      min={0.01}
+                      max={100}
+                      step='0.01'
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t('Multiplier applied to high-tier lottery rewards.')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           {enabled && (
             <>

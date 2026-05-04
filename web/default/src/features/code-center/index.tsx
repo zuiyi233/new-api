@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { History } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { SectionPageLayout } from '@/components/layout'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getCodeCenterStats } from './api'
+import { OperationHistoryDialog } from './components/operation-history-dialog'
 
 function StatCard({
   title,
@@ -32,6 +36,8 @@ function StatCard({
 
 export function CodeCenter() {
   const { t } = useTranslation()
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyCodeType, setHistoryCodeType] = useState('redemption')
 
   const { data, isLoading } = useQuery({
     queryKey: ['code-center-stats'],
@@ -55,9 +61,22 @@ export function CodeCenter() {
       <SectionPageLayout.Content>
         <div className='space-y-8'>
           <div>
-            <h3 className='mb-4 text-lg font-semibold'>
-              {t('Registration Codes')}
-            </h3>
+            <div className='mb-4 flex items-center justify-between'>
+              <h3 className='text-lg font-semibold'>
+                {t('Registration Codes')}
+              </h3>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => {
+                  setHistoryCodeType('redemption')
+                  setHistoryOpen(true)
+                }}
+              >
+                <History className='mr-1 h-4 w-4' />
+                {t('Operation History')}
+              </Button>
+            </div>
             <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
               <StatCard
                 title={t('Total')}
@@ -78,9 +97,22 @@ export function CodeCenter() {
           </div>
 
           <div>
-            <h3 className='mb-4 text-lg font-semibold'>
-              {t('Subscription Codes')}
-            </h3>
+            <div className='mb-4 flex items-center justify-between'>
+              <h3 className='text-lg font-semibold'>
+                {t('Subscription Codes')}
+              </h3>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => {
+                  setHistoryCodeType('subscription_code')
+                  setHistoryOpen(true)
+                }}
+              >
+                <History className='mr-1 h-4 w-4' />
+                {t('Operation History')}
+              </Button>
+            </div>
             <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
               <StatCard
                 title={t('Total')}
@@ -101,6 +133,12 @@ export function CodeCenter() {
           </div>
         </div>
       </SectionPageLayout.Content>
+
+      <OperationHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        codeType={historyCodeType}
+      />
     </SectionPageLayout>
   )
 }

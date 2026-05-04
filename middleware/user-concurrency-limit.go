@@ -69,6 +69,8 @@ return 0
 `)
 )
 
+var getUserConcurrencySnapshot = service.GetUserConcurrencySnapshot
+
 type inMemoryConcurrencyLimiter struct {
 	mu    sync.Mutex
 	slots map[int]map[string]int64
@@ -148,7 +150,7 @@ func UserConcurrencyLimit() gin.HandlerFunc {
 			return
 		}
 
-		snapshot, err := service.GetUserConcurrencySnapshot(userID)
+		snapshot, err := getUserConcurrencySnapshot(userID)
 		if err != nil {
 			abortWithOpenAiMessage(c, http.StatusInternalServerError, "concurrency_limit_resolve_failed")
 			return
@@ -174,8 +176,15 @@ func UserConcurrencyLimit() gin.HandlerFunc {
 			return
 		}
 		if !acquired {
-			abortWithOpenAiMessage(c, http.StatusTooManyRequests, fmt.Sprintf("当前并发已达上限（%d）", limit))
-			return
+			acquired, inflight, err = waitForConcurrencySlot(c.Request.Context(), userID, requestID, limit, ttlMs)
+			if err != nil {
+				abortWithOpenAiMessage(c, http.StatusInternalServerError, "concurrency_acquire_failed")
+				return
+			}
+			if !acquired {
+				abortWithOpenAiMessage(c, http.StatusTooManyRequests, "达到并发上限")
+				return
+			}
 		}
 
 		c.Header("X-Concurrency-Limit", strconv.Itoa(limit))
@@ -277,6 +286,63 @@ func parseConcurrencyScriptResult(raw any) (bool, int64, error) {
 		return false, 0, err
 	}
 	return allowed == 1, current, nil
+}
+
+func getConcurrencyQueueWaitMs() int {
+	if setting.ConcurrencyQueueWaitMs <= 0 {
+		return 5000
+	}
+	return setting.ConcurrencyQueueWaitMs
+}
+
+func getConcurrencyQueuePollInterval(waitMs int) time.Duration {
+	if waitMs <= 0 {
+		return 50 * time.Millisecond
+	}
+	pollMs := waitMs / 20
+	if pollMs < 30 {
+		pollMs = 30
+	}
+	if pollMs > 200 {
+		pollMs = 200
+	}
+	return time.Duration(pollMs) * time.Millisecond
+}
+
+func waitForConcurrencySlot(ctx context.Context, userID int, requestID string, limit int, ttlMs int64) (bool, int64, error) {
+	waitMs := getConcurrencyQueueWaitMs()
+	if waitMs <= 0 {
+		return false, 0, nil
+	}
+	deadline := time.Now().Add(time.Duration(waitMs) * time.Millisecond)
+	pollInterval := getConcurrencyQueuePollInterval(waitMs)
+
+	for {
+		if ctx.Err() != nil {
+			return false, 0, ctx.Err()
+		}
+		if time.Now().After(deadline) {
+			return false, 0, nil
+		}
+
+		timer := time.NewTimer(pollInterval)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+			return false, 0, ctx.Err()
+		case <-timer.C:
+		}
+
+		acquired, inflight, err := acquireConcurrencySlot(ctx, userID, requestID, limit, ttlMs)
+		if err != nil {
+			return false, 0, err
+		}
+		if acquired {
+			return true, inflight, nil
+		}
+	}
 }
 
 func toInt64(value any) (int64, error) {

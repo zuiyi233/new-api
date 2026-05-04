@@ -76,6 +76,10 @@ export type GeneralSettings = {
   'checkin_setting.min_interval_hours': number
   'checkin_setting.weekly_reward_cap_quota': number
   'checkin_setting.reward_rule': string
+  'lottery_setting.enabled': boolean
+  'lottery_setting.basic_tier_multiplier': number
+  'lottery_setting.medium_tier_multiplier': number
+  'lottery_setting.advanced_tier_multiplier': number
   'channel_affinity_setting.enabled': boolean
   'channel_affinity_setting.switch_on_success': boolean
   'channel_affinity_setting.max_entries': number
@@ -294,6 +298,7 @@ export type RequestLimitsSettings = {
   GlobalDefaultConcurrency: number
   ConcurrencyCodeOverridePolicy: string
   ConcurrencyCounterTtlSeconds: number
+  ConcurrencyQueueWaitMs: number
 }
 
 export type UpstreamChannel = {

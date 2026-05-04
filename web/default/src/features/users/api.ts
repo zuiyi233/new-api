@@ -10,6 +10,11 @@ import type {
   ManageUserConcurrencyPayload,
   ApiResponse,
 } from './types'
+import type {
+  GetEntitlementsResponse,
+  AddEntitlementPayload,
+  UpdateEntitlementPayload,
+} from './lib/entitlement-types'
 
 // ============================================================================
 // User Management APIs
@@ -172,5 +177,32 @@ export async function adminUnbindCustomOAuth(
   const res = await api.delete(
     `/api/user/${userId}/oauth/bindings/${providerId}`
   )
+  return res.data
+}
+
+// ============================================================================
+// User Entitlement APIs
+// ============================================================================
+
+export async function getUserEntitlements(
+  userId: number
+): Promise<GetEntitlementsResponse> {
+  const res = await api.get(`/api/user/${userId}/entitlements`)
+  return res.data
+}
+
+export async function addUserEntitlement(
+  userId: number,
+  payload: AddEntitlementPayload
+): Promise<ApiResponse> {
+  const res = await api.post(`/api/user/${userId}/entitlements`, payload)
+  return res.data
+}
+
+export async function updateUserEntitlement(
+  userId: number,
+  payload: UpdateEntitlementPayload
+): Promise<ApiResponse> {
+  const res = await api.put(`/api/user/${userId}/entitlements`, payload)
   return res.data
 }

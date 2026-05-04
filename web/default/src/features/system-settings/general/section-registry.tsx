@@ -107,6 +107,13 @@ const GENERAL_SECTIONS = [
           weeklyRewardCapQuota:
             settings['checkin_setting.weekly_reward_cap_quota'],
           rewardRule: settings['checkin_setting.reward_rule'],
+          lotteryEnabled: settings['lottery_setting.enabled'],
+          lotteryBasicTierMultiplier:
+            settings['lottery_setting.basic_tier_multiplier'],
+          lotteryMediumTierMultiplier:
+            settings['lottery_setting.medium_tier_multiplier'],
+          lotteryAdvancedTierMultiplier:
+            settings['lottery_setting.advanced_tier_multiplier'],
         }}
       />
     ),

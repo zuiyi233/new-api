@@ -405,6 +405,29 @@ func validateCheckinOptionValue(key string, value string) error {
 	return nil
 }
 
+func validateLotteryOptionValue(key string, value string) error {
+	switch key {
+	case "lottery_setting.enabled":
+		if _, err := strconv.ParseBool(value); err != nil {
+			return fmt.Errorf("抽奖配置 %s 需要为布尔值", key)
+		}
+	case "lottery_setting.basic_tier_multiplier",
+		"lottery_setting.medium_tier_multiplier",
+		"lottery_setting.advanced_tier_multiplier":
+		floatValue, err := strconv.ParseFloat(value, 64)
+		if err != nil || math.IsNaN(floatValue) || math.IsInf(floatValue, 0) {
+			return fmt.Errorf("抽奖配置 %s 需要为合法数字", key)
+		}
+		if floatValue <= 0 {
+			return fmt.Errorf("抽奖配置 %s 必须大于 0", key)
+		}
+		if floatValue > 100 {
+			return fmt.Errorf("抽奖配置 %s 不能大于 100", key)
+		}
+	}
+	return nil
+}
+
 func GetOptions(c *gin.Context) {
 	var options []*model.Option
 	optionValues := make(map[string]string)
@@ -643,6 +666,15 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "ConcurrencyQueueWaitMs":
+		err = setting.ValidateConcurrencyQueueWaitMs(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
 	case "AutomaticDisableStatusCodes":
 		_, err = operation_setting.ParseHTTPStatusCodeRanges(option.Value.(string))
 		if err != nil {
@@ -701,6 +733,16 @@ func UpdateOption(c *gin.Context) {
 
 	if strings.HasPrefix(option.Key, "checkin_setting.") {
 		err = validateCheckinOptionValue(option.Key, option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+	if strings.HasPrefix(option.Key, "lottery_setting.") {
+		err = validateLotteryOptionValue(option.Key, option.Value.(string))
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,

@@ -147,6 +147,7 @@ func InitOptionMap() {
 	common.OptionMap["GlobalDefaultConcurrency"] = strconv.Itoa(setting.GlobalDefaultConcurrency)
 	common.OptionMap["ConcurrencyCodeOverridePolicy"] = setting.ConcurrencyCodeOverridePolicy
 	common.OptionMap["ConcurrencyCounterTtlSeconds"] = strconv.Itoa(setting.ConcurrencyCounterTtlSeconds)
+	common.OptionMap["ConcurrencyQueueWaitMs"] = strconv.Itoa(setting.ConcurrencyQueueWaitMs)
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
 	common.OptionMap["CacheRatio"] = ratio_setting.CacheRatio2JSONString()
@@ -516,6 +517,11 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.ConcurrencyCounterTtlSeconds, _ = strconv.Atoi(value)
 		if setting.ConcurrencyCounterTtlSeconds <= 0 {
 			setting.ConcurrencyCounterTtlSeconds = 600
+		}
+	case "ConcurrencyQueueWaitMs":
+		setting.ConcurrencyQueueWaitMs, _ = strconv.Atoi(value)
+		if setting.ConcurrencyQueueWaitMs <= 0 {
+			setting.ConcurrencyQueueWaitMs = 5000
 		}
 	case "RetryTimes":
 		common.RetryTimes, _ = strconv.Atoi(value)

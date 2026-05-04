@@ -2,6 +2,16 @@
 // User Actions
 // ============================================================================
 export { getUserActionMessage } from './user-actions'
+export type { ManageUserAction } from '../types'
+export {
+  entitlementSchema,
+  ENTITLEMENT_STATUS,
+} from './entitlement-types'
+export type {
+  Entitlement,
+  AddEntitlementPayload,
+  UpdateEntitlementPayload,
+} from './entitlement-types'
 
 // ============================================================================
 // Form Utilities
