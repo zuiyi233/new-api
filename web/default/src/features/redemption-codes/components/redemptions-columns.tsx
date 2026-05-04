@@ -10,10 +10,25 @@ import {
 import { DataTableColumnHeader } from '@/components/data-table'
 import { MaskedValueDisplay } from '@/components/masked-value-display'
 import { StatusBadge } from '@/components/status-badge'
+import { Badge } from '@/components/ui/badge'
 import { REDEMPTION_FILTER_EXPIRED, REDEMPTION_STATUSES } from '../constants'
 import { isRedemptionExpired, isTimestampExpired } from '../lib'
 import { type Redemption } from '../types'
 import { DataTableRowActions } from './data-table-row-actions'
+
+const BENEFIT_TYPE_LABELS: Record<string, string> = {
+  quota: 'Quota Only',
+  concurrency_stack: 'Concurrency Stack',
+  concurrency_override: 'Concurrency Override',
+  mixed: 'Quota + Concurrency',
+}
+
+const BENEFIT_TYPE_VARIANTS: Record<string, 'default' | 'secondary' | 'outline'> = {
+  quota: 'secondary',
+  concurrency_stack: 'default',
+  concurrency_override: 'outline',
+  mixed: 'default',
+}
 
 export function useRedemptionsColumns(): ColumnDef<Redemption>[] {
   const { t } = useTranslation()
@@ -157,6 +172,53 @@ export function useRedemptionsColumns(): ColumnDef<Redemption>[] {
             variant='neutral'
             copyable={false}
           />
+        )
+      },
+    },
+    {
+      accessorKey: 'benefit_type',
+      meta: { label: t('Benefit Type'), mobileHidden: true },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('Benefit Type')} />
+      ),
+      cell: ({ row }) => {
+        const benefitType = (row.getValue('benefit_type') as string) || 'quota'
+        const label = t(BENEFIT_TYPE_LABELS[benefitType] || benefitType)
+        const variant = BENEFIT_TYPE_VARIANTS[benefitType] || 'neutral'
+        return (
+          <Badge variant={variant as 'default'}>
+            {label}
+          </Badge>
+        )
+      },
+    },
+    {
+      accessorKey: 'concurrency_value',
+      meta: { label: t('Concurrency'), mobileHidden: true },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('Concurrency')} />
+      ),
+      cell: ({ row }) => {
+        const redemption = row.original
+        const benefitType = redemption.benefit_type || 'quota'
+        const includesConcurrency =
+          benefitType === 'concurrency_stack' ||
+          benefitType === 'concurrency_override' ||
+          benefitType === 'mixed'
+        if (!includesConcurrency) {
+          return <span className='text-muted-foreground text-sm'>-</span>
+        }
+        const mode = redemption.concurrency_mode || 'stack'
+        const value = redemption.concurrency_value || 0
+        return (
+          <div className='flex items-center gap-1.5'>
+            <Badge variant={mode === 'override' ? 'outline' : 'default'}>
+              {mode === 'override' ? t('Override') : t('Stack')}
+            </Badge>
+            <span className='text-sm font-medium'>
+              {mode === 'override' ? `= ${value}` : `+${value}`}
+            </span>
+          </div>
         )
       },
     },

@@ -15,6 +15,10 @@ export const redemptionSchema = z.object({
   redeemed_time: z.number(),
   expired_time: z.number(), // 0 for never expires
   used_user_id: z.number(),
+  benefit_type: z.string().optional(),
+  concurrency_mode: z.string().optional(),
+  concurrency_value: z.number().optional(),
+  benefit_expires_at: z.number().optional(),
 })
 
 export type Redemption = z.infer<typeof redemptionSchema>
@@ -58,6 +62,10 @@ export interface RedemptionFormData {
   expired_time: number
   count?: number // Only for create
   status?: number // Only for status update
+  benefit_type?: string
+  concurrency_mode?: string
+  concurrency_value?: number
+  benefit_expires_at?: number
 }
 
 // ============================================================================

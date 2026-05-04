@@ -25,6 +25,10 @@ export function getRedemptionFormSchema(t: TFunction) {
       .min(REDEMPTION_VALIDATION.COUNT_MIN, msg.COUNT_INVALID)
       .max(REDEMPTION_VALIDATION.COUNT_MAX, msg.COUNT_INVALID)
       .optional(),
+    benefit_type: z.string().default('quota'),
+    concurrency_mode: z.string().default('stack'),
+    concurrency_value: z.number().min(0).default(0),
+    benefit_expires_at: z.date().optional(),
   })
 }
 
@@ -33,6 +37,10 @@ export type RedemptionFormValues = {
   quota_dollars: number
   expired_time?: Date
   count?: number
+  benefit_type: string
+  concurrency_mode: string
+  concurrency_value: number
+  benefit_expires_at?: Date
 }
 
 // ============================================================================
@@ -44,6 +52,10 @@ export const REDEMPTION_FORM_DEFAULT_VALUES: RedemptionFormValues = {
   quota_dollars: 10,
   expired_time: undefined,
   count: 1,
+  benefit_type: 'quota',
+  concurrency_mode: 'stack',
+  concurrency_value: 0,
+  benefit_expires_at: undefined,
 }
 
 // ============================================================================
@@ -56,6 +68,11 @@ export const REDEMPTION_FORM_DEFAULT_VALUES: RedemptionFormValues = {
 export function transformFormDataToPayload(
   data: RedemptionFormValues
 ): RedemptionFormData {
+  const includesConcurrency =
+    data.benefit_type === 'concurrency_stack' ||
+    data.benefit_type === 'concurrency_override' ||
+    data.benefit_type === 'mixed'
+
   return {
     name: data.name,
     quota: parseQuotaFromDollars(data.quota_dollars),
@@ -63,6 +80,13 @@ export function transformFormDataToPayload(
       ? Math.floor(data.expired_time.getTime() / 1000)
       : 0,
     count: data.count || 1,
+    benefit_type: data.benefit_type,
+    concurrency_mode: includesConcurrency ? data.concurrency_mode : undefined,
+    concurrency_value: includesConcurrency ? data.concurrency_value : 0,
+    benefit_expires_at:
+      includesConcurrency && data.benefit_expires_at
+        ? Math.floor(data.benefit_expires_at.getTime() / 1000)
+        : 0,
   }
 }
 
@@ -80,5 +104,12 @@ export function transformRedemptionToFormDefaults(
         ? new Date(redemption.expired_time * 1000)
         : undefined,
     count: 1,
+    benefit_type: redemption.benefit_type || 'quota',
+    concurrency_mode: redemption.concurrency_mode || 'stack',
+    concurrency_value: redemption.concurrency_value || 0,
+    benefit_expires_at:
+      redemption.benefit_expires_at && redemption.benefit_expires_at > 0
+        ? new Date(redemption.benefit_expires_at * 1000)
+        : undefined,
   }
 }

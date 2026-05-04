@@ -7,6 +7,7 @@ import type {
   UserFormData,
   ManageUserAction,
   ManageUserQuotaPayload,
+  ManageUserConcurrencyPayload,
   ApiResponse,
 } from './types'
 
@@ -90,6 +91,16 @@ export async function manageUser(
  */
 export async function adjustUserQuota(
   payload: ManageUserQuotaPayload
+): Promise<ApiResponse<Partial<User>>> {
+  const res = await api.post('/api/user/manage', payload)
+  return res.data
+}
+
+/**
+ * Set or clear user concurrency override
+ */
+export async function adjustUserConcurrency(
+  payload: ManageUserConcurrencyPayload
 ): Promise<ApiResponse<Partial<User>>> {
   const res = await api.post('/api/user/manage', payload)
   return res.data

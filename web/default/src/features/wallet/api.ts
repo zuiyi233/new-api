@@ -1,6 +1,7 @@
 import { api } from '@/lib/api'
 import type {
   RedemptionRequest,
+  RedeemCodeResult,
   PaymentRequest,
   AmountRequest,
   AffiliateTransferRequest,
@@ -42,12 +43,22 @@ export async function getTopupInfo(): Promise<TopupInfoResponse> {
 }
 
 /**
- * Redeem a topup code
+ * Redeem a topup code (legacy endpoint, returns quota only)
  */
 export async function redeemTopupCode(
   request: RedemptionRequest
 ): Promise<RedemptionResponse> {
   const res = await api.post('/api/user/topup', request)
+  return res.data
+}
+
+/**
+ * Redeem a code using the unified endpoint (returns full result with concurrency info)
+ */
+export async function redeemCode(
+  request: RedemptionRequest
+): Promise<ApiResponse<RedeemCodeResult>> {
+  const res = await api.post('/api/user/redeem-code', request)
   return res.data
 }
 

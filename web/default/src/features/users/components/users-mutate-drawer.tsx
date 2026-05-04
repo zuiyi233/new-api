@@ -47,6 +47,7 @@ import {
 } from '../lib'
 import { type User } from '../types'
 import { UserQuotaDialog } from './user-quota-dialog'
+import { UserConcurrencyDialog } from './user-concurrency-dialog'
 import { useUsers } from './users-provider'
 
 type UsersMutateDrawerProps = {
@@ -65,6 +66,10 @@ export function UsersMutateDrawer({
   const { triggerRefresh } = useUsers()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [quotaDialogOpen, setQuotaDialogOpen] = useState(false)
+  const [concurrencyDialogOpen, setConcurrencyDialogOpen] = useState(false)
+  const [concurrencyOverride, setConcurrencyOverride] = useState<
+    number | null | undefined
+  >(null)
 
   // Fetch groups
   const { data: groupsData } = useQuery({
@@ -87,11 +92,13 @@ export function UsersMutateDrawer({
       getUser(currentRow.id).then((result) => {
         if (result.success && result.data) {
           form.reset(transformUserToFormDefaults(result.data))
+          setConcurrencyOverride(result.data.concurrency_override ?? null)
         }
       })
     } else if (open && !isUpdate) {
       // For create, reset to defaults
       form.reset(USER_FORM_DEFAULT_VALUES)
+      setConcurrencyOverride(null)
     }
   }, [open, isUpdate, currentRow, form])
 
@@ -361,6 +368,25 @@ export function UsersMutateDrawer({
                       </FormItem>
                     )}
                   />
+
+                  <div className='space-y-2'>
+                    <Label>{t('Concurrency Override')}</Label>
+                    <div className='text-muted-foreground text-sm'>
+                      {concurrencyOverride && concurrencyOverride > 0
+                        ? t('Current override: {{value}} slots', {
+                            value: concurrencyOverride,
+                          })
+                        : t('Not set (using global default)')}
+                    </div>
+                    <Button
+                      type='button'
+                      variant='outline'
+                      size='sm'
+                      onClick={() => setConcurrencyDialogOpen(true)}
+                    >
+                      {t('Adjust Concurrency')}
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -414,6 +440,17 @@ export function UsersMutateDrawer({
           onOpenChange={setQuotaDialogOpen}
           userId={currentRow.id}
           currentQuota={parseQuotaFromDollars(currentQuotaRaw || 0)}
+          onSuccess={refreshUserData}
+        />
+      )}
+
+      {/* Adjust Concurrency Dialog */}
+      {currentRow && (
+        <UserConcurrencyDialog
+          open={concurrencyDialogOpen}
+          onOpenChange={setConcurrencyDialogOpen}
+          userId={currentRow.id}
+          currentOverride={concurrencyOverride}
           onSuccess={refreshUserData}
         />
       )}

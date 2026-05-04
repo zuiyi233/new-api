@@ -39,6 +39,8 @@ export const userSchema = z.object({
   last_login_at: z.number().optional(),
   DeletedAt: z.any().nullable().optional(),
   remark: z.string().optional(),
+  concurrency_override: z.number().nullable().optional(),
+  effective_concurrency_limit: z.number().optional(),
 })
 export type User = z.infer<typeof userSchema>
 
@@ -95,6 +97,7 @@ export type ManageUserAction =
   | 'disable'
   | 'delete'
   | 'add_quota'
+  | 'set_concurrency_override'
 
 export type QuotaAdjustMode = 'add' | 'subtract' | 'override'
 
@@ -102,6 +105,15 @@ export interface ManageUserQuotaPayload {
   id: number
   action: 'add_quota'
   mode: QuotaAdjustMode
+  value: number
+}
+
+export type ConcurrencyOverrideMode = 'set' | 'clear'
+
+export interface ManageUserConcurrencyPayload {
+  id: number
+  action: 'set_concurrency_override'
+  mode: ConcurrencyOverrideMode
   value: number
 }
 

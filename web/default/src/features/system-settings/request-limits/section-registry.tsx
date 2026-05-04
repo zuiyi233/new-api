@@ -1,5 +1,6 @@
 import type { RequestLimitsSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
+import { ConcurrencySection } from './concurrency-section'
 import { RateLimitSection } from './rate-limit-section'
 import { SensitiveWordsSection } from './sensitive-words-section'
 import { SSRFSection } from './ssrf-section'
@@ -19,6 +20,23 @@ const REQUEST_LIMITS_SECTIONS = [
           ModelRequestRateLimitDurationMinutes:
             settings.ModelRequestRateLimitDurationMinutes,
           ModelRequestRateLimitGroup: settings.ModelRequestRateLimitGroup,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'concurrency',
+    titleKey: 'User Concurrency Limit',
+    descriptionKey: 'Configure per-user concurrent request limits',
+    build: (settings: RequestLimitsSettings) => (
+      <ConcurrencySection
+        defaultValues={{
+          RelayConcurrencyEnabled: settings.RelayConcurrencyEnabled,
+          GlobalDefaultConcurrency: settings.GlobalDefaultConcurrency,
+          ConcurrencyCodeOverridePolicy:
+            settings.ConcurrencyCodeOverridePolicy,
+          ConcurrencyCounterTtlSeconds:
+            settings.ConcurrencyCounterTtlSeconds,
         }}
       />
     ),

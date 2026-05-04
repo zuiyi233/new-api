@@ -17,6 +17,13 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Sheet,
   SheetClose,
   SheetContent,
@@ -284,6 +291,188 @@ export function RedemptionsMutateDrawer({
                   </FormItem>
                 )}
               />
+            )}
+
+            <FormField
+              control={form.control}
+              name='benefit_type'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Benefit Type')}</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value='quota'>
+                        {t('Quota Only')}
+                      </SelectItem>
+                      <SelectItem value='concurrency_stack'>
+                        {t('Concurrency Stack')}
+                      </SelectItem>
+                      <SelectItem value='concurrency_override'>
+                        {t('Concurrency Override')}
+                      </SelectItem>
+                      <SelectItem value='mixed'>
+                        {t('Quota + Concurrency')}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    {t(
+                      'Choose what benefit this redemption code provides'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {(form.watch('benefit_type') === 'concurrency_stack' ||
+              form.watch('benefit_type') === 'concurrency_override' ||
+              form.watch('benefit_type') === 'mixed') && (
+              <>
+                <FormField
+                  control={form.control}
+                  name='concurrency_mode'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Concurrency Mode')}</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value='stack'>
+                            {t('Stack')}
+                          </SelectItem>
+                          <SelectItem value='override'>
+                            {t('Override')}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        {t(
+                          'Stack adds to the current limit; Override replaces it'
+                        )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='concurrency_value'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Concurrency Value')}</FormLabel>
+                      <FormControl>
+                        <div className='flex items-center gap-2'>
+                          <Input
+                            type='number'
+                            min={1}
+                            step={1}
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(
+                                parseInt(e.target.value) || 0
+                              )
+                            }
+                          />
+                          <span className='text-muted-foreground text-sm'>
+                            {t('slots')}
+                          </span>
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        {t(
+                          'Number of concurrent slots to grant (must be greater than 0)'
+                        )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='benefit_expires_at'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Concurrency Benefit Expiry')}</FormLabel>
+                      <div className='space-y-2'>
+                        <FormControl>
+                          <DateTimePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder={t('Never expires')}
+                          />
+                        </FormControl>
+                        <div className='grid grid-cols-4 gap-1.5 sm:flex sm:gap-2'>
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={() => field.onChange(undefined)}
+                          >
+                            {t('Never')}
+                          </Button>
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={() => {
+                              const d = new Date()
+                              d.setMonth(d.getMonth() + 1)
+                              field.onChange(d)
+                            }}
+                          >
+                            {t('1M')}
+                          </Button>
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={() => {
+                              const d = new Date()
+                              d.setDate(d.getDate() + 7)
+                              field.onChange(d)
+                            }}
+                          >
+                            {t('1W')}
+                          </Button>
+                          <Button
+                            type='button'
+                            variant='outline'
+                            size='sm'
+                            onClick={() => {
+                              const d = new Date()
+                              d.setDate(d.getDate() + 1)
+                              field.onChange(d)
+                            }}
+                          >
+                            {t('1 Day')}
+                          </Button>
+                        </div>
+                      </div>
+                      <FormDescription>
+                        {t(
+                          'When the concurrency benefit expires. Leave empty for never.'
+                        )}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
             )}
           </form>
         </Form>

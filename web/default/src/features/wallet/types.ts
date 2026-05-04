@@ -148,6 +148,40 @@ export interface RedemptionRequest {
 }
 
 /**
+ * Concurrency result from redemption
+ */
+export interface RedemptionConcurrencyResult {
+  mode: string
+  value: number
+  effective_limit: number
+  global_default: number
+  user_override: number | null
+  code_stack_total: number
+  code_override_value: number
+  expires_at: number
+}
+
+/**
+ * Redemption code response (from /api/user/redeem-code)
+ */
+export interface RedeemCodeResult {
+  code_type: string
+  action: string
+  message: string
+  quota?: number
+  concurrency?: RedemptionConcurrencyResult
+  subscription?: {
+    subscription_id: number
+    plan_id: number
+    plan_title: string
+    start_time: number
+    end_time: number
+    status: string
+    source: string
+  }
+}
+
+/**
  * Payment request parameters
  */
 export interface PaymentRequest {
