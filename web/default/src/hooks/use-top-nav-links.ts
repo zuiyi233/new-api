@@ -1,0 +1,117 @@
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useAuthStore } from '@/stores/auth-store'
+import { useStatus } from '@/hooks/use-status'
+import {
+  HEADER_NAV_DEFAULT,
+  parseHeaderNavModules,
+  type HeaderNavExternalLinkConfig,
+  type HeaderNavModulesConfig,
+} from '@/features/system-settings/maintenance/config'
+
+export type TopNavLink = {
+  title: string
+  href: string
+  disabled?: boolean
+  external?: boolean
+}
+
+const isSafeExternalUrl = (value: string): boolean => /^https?:\/\//i.test(value)
+
+const normalizeExternalLinks = (
+  modules: HeaderNavModulesConfig
+): HeaderNavExternalLinkConfig[] => {
+  if (modules.customExternalLinks.length > 0) {
+    return modules.customExternalLinks
+  }
+
+  if (
+    modules.customExternalLink &&
+    (modules.customExternalLink.enabled ||
+      modules.customExternalLink.text.trim() !== '' ||
+      modules.customExternalLink.url.trim() !== '')
+  ) {
+    return [modules.customExternalLink]
+  }
+
+  return []
+}
+
+/**
+ * Generate top navigation links based on HeaderNavModules configuration from backend /api/status
+ * Backend format example (stringified JSON):
+ * {
+ *   home: true,
+ *   console: true,
+ *   pricing: { enabled: true, requireAuth: false },
+ *   docs: true,
+ *   about: true
+ * }
+ */
+export function useTopNavLinks(): TopNavLink[] {
+  const { t } = useTranslation()
+  const { status } = useStatus()
+  const { auth } = useAuthStore()
+
+  // Parse HeaderNavModules
+  const modules = useMemo(() => {
+    const raw = status?.HeaderNavModules
+    return parseHeaderNavModules(
+      typeof raw === 'string' ? raw : JSON.stringify(HEADER_NAV_DEFAULT)
+    )
+  }, [status?.HeaderNavModules])
+
+  // Documentation link (may be external)
+  const docsLink: string | undefined = status?.docs_link as string | undefined
+
+  const isAuthed = !!auth?.user
+
+  const links: TopNavLink[] = []
+
+  // Home
+  if (modules?.home !== false) {
+    links.push({ title: t('Home'), href: '/' })
+  }
+
+  // Console -> /dashboard (new console path)
+  if (modules?.console !== false) {
+    links.push({ title: t('Console'), href: '/dashboard' })
+  }
+
+  // Pricing
+  const pricing = modules?.pricing
+  if (pricing && typeof pricing === 'object' && pricing.enabled) {
+    const disabled = pricing.requireAuth && !isAuthed
+    links.push({ title: t('Model Square'), href: '/pricing', disabled })
+  }
+
+  // Docs (supports external links)
+  if (modules?.docs !== false) {
+    if (docsLink) {
+      links.push({ title: t('Docs'), href: docsLink, external: true })
+    } else {
+      links.push({ title: t('Docs'), href: '/docs' })
+    }
+  }
+
+  // About
+  if (modules?.about !== false) {
+    links.push({ title: t('About'), href: '/about' })
+  }
+
+  const customExternalLinks = normalizeExternalLinks(modules)
+  customExternalLinks.forEach((item) => {
+    const text = item.text.trim()
+    const url = item.url.trim()
+    if (!item.enabled || text === '' || url === '' || !isSafeExternalUrl(url)) {
+      return
+    }
+    links.push({
+      title: text,
+      href: url,
+      external: true,
+    })
+  })
+
+  return links
+}
