@@ -96,10 +96,11 @@ export async function register(payload: RegisterPayload): Promise<ApiResponse> {
 // Send email verification code
 export async function sendEmailVerification(
   email: string,
+  registrationCode?: string,
   turnstile?: string
 ): Promise<ApiResponse> {
   const res = await api.get('/api/verification', {
-    params: { email, turnstile },
+    params: { email, registration_code: registrationCode, turnstile },
   })
   return res.data
 }

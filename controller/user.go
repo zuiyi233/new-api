@@ -180,6 +180,10 @@ func Register(c *gin.Context) {
 			common.ApiErrorI18n(c, i18n.MsgUserEmailVerificationRequired)
 			return
 		}
+		if ok, message := validateRestrictedEmail(registerRequest.Email); !ok {
+			common.ApiErrorMsg(c, message)
+			return
+		}
 		if !common.VerifyCodeWithKey(registerRequest.Email, registerRequest.VerificationCode, common.EmailVerificationPurpose) {
 			common.ApiErrorI18n(c, i18n.MsgUserVerificationCodeError)
 			return

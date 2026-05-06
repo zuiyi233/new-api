@@ -92,8 +92,11 @@ export type AuthSettings = {
   PasswordRegisterEnabled: boolean
   EmailVerificationEnabled: boolean
   RegisterEnabled: boolean
+  RegistrationCodeRequired: boolean
   EmailDomainRestrictionEnabled: boolean
   EmailAliasRestrictionEnabled: boolean
+  QQNumericMailboxOnlyEnabled: boolean
+  EmailVerificationRegistrationCodeGateEnabled: boolean
   EmailDomainWhitelist: string
   GitHubOAuthEnabled: boolean
   GitHubClientId: string
@@ -160,6 +163,15 @@ export type IntegrationSettings = {
   SMTPToken: string
   SMTPSSLEnabled: boolean
   SMTPForceAuthLogin: boolean
+  SMTPMonthlyLimit: string
+  SMTPProviders: string
+  SMTPProvidersPreview: string
+  EmailVerificationIPRateLimitEnable: boolean
+  EmailVerificationIPRateLimitNum: string
+  EmailVerificationIPRateLimitDuration: string
+  EmailVerificationEmailCooldownSeconds: string
+  EmailVerificationDailyLimitEnable: boolean
+  EmailVerificationDailyLimit: string
   WorkerUrl: string
   WorkerValidKey: string
   WorkerAllowHttpImageRequestEnabled: boolean

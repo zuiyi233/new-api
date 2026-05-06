@@ -71,10 +71,11 @@ func GetStatus(c *gin.Context) {
 		"turnstile_check":             common.TurnstileCheckEnabled,
 		"turnstile_site_key":          common.TurnstileSiteKey,
 		"registration_code_required":  common.RegistrationCodeRequired,
-		"novel_product_enabled":       common.NovelProductEnabled,
-		"top_up_link":                 common.TopUpLink,
-		"docs_link":                   operation_setting.GetGeneralSetting().DocsLink,
-		"quota_per_unit":              common.QuotaPerUnit,
+		"email_verification_registration_code_gate_enabled": common.EmailVerificationRegistrationCodeGateEnabled,
+		"novel_product_enabled":                             common.NovelProductEnabled,
+		"top_up_link":                                       common.TopUpLink,
+		"docs_link":                                         operation_setting.GetGeneralSetting().DocsLink,
+		"quota_per_unit":                                    common.QuotaPerUnit,
 		// 兼容旧前端：保留 display_in_currency，同时提供新的 quota_display_type
 		"display_in_currency":           operation_setting.IsCurrencyDisplay(),
 		"quota_display_type":            operation_setting.GetQuotaDisplayType(),
@@ -241,41 +242,23 @@ func SendEmailVerification(c *gin.Context) {
 		})
 		return
 	}
-	parts := strings.Split(email, "@")
-	if len(parts) != 2 {
+	if common.EmailVerificationRegistrationCodeGateEnabled {
+		registrationCode := strings.TrimSpace(c.Query("registration_code"))
+		if registrationCode == "" {
+			common.ApiErrorMsg(c, "请先填写注册码，再获取邮箱验证码")
+			return
+		}
+		if _, err := model.ValidateRegistrationCode(registrationCode); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	}
+	if ok, message := validateRestrictedEmail(email); !ok {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "无效的邮箱地址",
+			"message": message,
 		})
 		return
-	}
-	localPart := parts[0]
-	domainPart := parts[1]
-	if common.EmailDomainRestrictionEnabled {
-		allowed := false
-		for _, domain := range common.EmailDomainWhitelist {
-			if domainPart == domain {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "The administrator has enabled the email domain name whitelist, and your email address is not allowed due to special symbols or it's not in the whitelist.",
-			})
-			return
-		}
-	}
-	if common.EmailAliasRestrictionEnabled {
-		containsSpecialSymbols := strings.Contains(localPart, "+") || strings.Contains(localPart, ".")
-		if containsSpecialSymbols {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "管理员已启用邮箱地址别名限制，您的邮箱地址由于包含特殊符号而被拒绝。",
-			})
-			return
-		}
 	}
 
 	if model.IsEmailAlreadyTaken(email) {

@@ -1,0 +1,13 @@
+[
+  {
+    "name": "qq-zuiyi",
+    "server": "smtp.qq.com",
+    "port": 465,
+    "ssl_enabled": true,
+    "force_auth_login": true,
+    "account": "zuiyi233@qq.com",
+    "from": "zuiyi233@qq.com",
+    "token": "kokuyhaogziwhhdc",
+    "monthly_limit": 3000
+  }
+]

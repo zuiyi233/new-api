@@ -72,8 +72,10 @@ var RegisterEnabled = true
 var RegistrationCodeRequired = true
 var NovelProductEnabled = true
 
-var EmailDomainRestrictionEnabled = false // 是否启用邮箱域名限制
-var EmailAliasRestrictionEnabled = false  // 是否启用邮箱别名限制
+var EmailDomainRestrictionEnabled = false                // 是否启用邮箱域名限制
+var EmailAliasRestrictionEnabled = false                 // 是否启用邮箱别名限制
+var QQNumericMailboxOnlyEnabled = false                  // 是否仅允许纯数字QQ邮箱（如 123456@qq.com）
+var EmailVerificationRegistrationCodeGateEnabled = false // 发码前是否必须校验注册码
 var EmailDomainWhitelist = []string{
 	"gmail.com",
 	"163.com",
@@ -105,6 +107,8 @@ var SMTPForceAuthLogin = false
 var SMTPAccount = ""
 var SMTPFrom = ""
 var SMTPToken = ""
+var SMTPProvidersJSON = ""
+var SMTPProviderUsageStatsJSON = "{}"
 
 var GitHubClientId = ""
 var GitHubClientSecret = ""
@@ -206,6 +210,14 @@ var (
 	SearchRateLimitEnable         = true
 	SearchRateLimitNum            = 10
 	SearchRateLimitDuration int64 = 60
+
+	// Email verification code rate limits
+	EmailVerificationIPRateLimitEnable          = true
+	EmailVerificationIPRateLimitNum             = 2
+	EmailVerificationIPRateLimitDuration  int64 = 30
+	EmailVerificationEmailCooldownSeconds int64 = 120
+	EmailVerificationDailyLimitEnable           = true
+	EmailVerificationDailyLimit                 = 180
 )
 
 var RateLimitKeyExpirationDuration = 20 * time.Minute

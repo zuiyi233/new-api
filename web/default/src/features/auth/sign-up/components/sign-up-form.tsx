@@ -44,6 +44,7 @@ export function SignUpForm({
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [verificationCode, setVerificationCode] = useState('')
+  const [registrationCode, setRegistrationCode] = useState('')
   const [agreedToLegal, setAgreedToLegal] = useState(false)
   const [wechatCode, setWeChatCode] = useState('')
   const [isWeChatDialogOpen, setIsWeChatDialogOpen] = useState(false)
@@ -89,6 +90,10 @@ export function SignUpForm({
     status?.data?.oauth_register_enabled ??
     true
   const hasWeChatLogin = Boolean(status?.wechat_login)
+  const registrationCodeRequired = status?.registration_code_required !== false
+  const emailVerificationGateByRegistrationCode = Boolean(
+    status?.email_verification_registration_code_gate_enabled
+  )
 
   const wechatQrCodeUrl = useMemo(() => {
     return (
@@ -129,6 +134,10 @@ export function SignUpForm({
         return
       }
     }
+    if (registrationCodeRequired && !registrationCode.trim()) {
+      toast.error(t('Please enter the registration code'))
+      return
+    }
 
     setIsLoading(true)
     try {
@@ -138,6 +147,7 @@ export function SignUpForm({
         email: data.email || undefined,
         verification_code: verificationCode || undefined,
         aff: getAffiliateCode(),
+        registration_code: registrationCode.trim() || undefined,
         turnstile: turnstileToken,
       })
 
@@ -153,7 +163,14 @@ export function SignUpForm({
   }
 
   async function handleSendVerificationCode() {
-    await sendCode(emailValue || '')
+    if (
+      emailVerificationGateByRegistrationCode &&
+      !registrationCode.trim()
+    ) {
+      toast.error(t('Please enter the registration code'))
+      return
+    }
+    await sendCode(emailValue || '', registrationCode.trim() || undefined)
   }
 
   const handleOpenWeChatDialog = () => {
@@ -250,6 +267,20 @@ export function SignUpForm({
             </FormItem>
           )}
         />
+
+        {registrationCodeRequired && (
+          <FormItem>
+            <FormLabel>{t('Registration Code')}</FormLabel>
+            <FormControl>
+              <Input
+                placeholder={t('Enter your registration code')}
+                value={registrationCode}
+                onChange={(event) => setRegistrationCode(event.target.value)}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
 
         {/* Email Verification Section */}
         {emailVerificationRequired && (

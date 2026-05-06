@@ -27,6 +27,15 @@ func AllOption() ([]*Option, error) {
 }
 
 func InitOptionMap() {
+	common.RegisterSMTPUsageStatsPersistor(func(statsJSON string) error {
+		option := Option{Key: common.SMTPProviderUsageStatsOptionKey}
+		if err := DB.FirstOrCreate(&option, Option{Key: common.SMTPProviderUsageStatsOptionKey}).Error; err != nil {
+			return err
+		}
+		option.Value = statsJSON
+		return DB.Save(&option).Error
+	})
+
 	common.OptionMapRWMutex.Lock()
 	common.OptionMap = make(map[string]string)
 
@@ -57,6 +66,8 @@ func InitOptionMap() {
 	common.OptionMap["ChannelDisableThreshold"] = strconv.FormatFloat(common.ChannelDisableThreshold, 'f', -1, 64)
 	common.OptionMap["EmailDomainRestrictionEnabled"] = strconv.FormatBool(common.EmailDomainRestrictionEnabled)
 	common.OptionMap["EmailAliasRestrictionEnabled"] = strconv.FormatBool(common.EmailAliasRestrictionEnabled)
+	common.OptionMap["QQNumericMailboxOnlyEnabled"] = strconv.FormatBool(common.QQNumericMailboxOnlyEnabled)
+	common.OptionMap["EmailVerificationRegistrationCodeGateEnabled"] = strconv.FormatBool(common.EmailVerificationRegistrationCodeGateEnabled)
 	common.OptionMap["EmailDomainWhitelist"] = strings.Join(common.EmailDomainWhitelist, ",")
 	common.OptionMap["SMTPServer"] = ""
 	common.OptionMap["SMTPFrom"] = ""
@@ -65,6 +76,15 @@ func InitOptionMap() {
 	common.OptionMap["SMTPToken"] = ""
 	common.OptionMap["SMTPSSLEnabled"] = strconv.FormatBool(common.SMTPSSLEnabled)
 	common.OptionMap["SMTPForceAuthLogin"] = strconv.FormatBool(common.SMTPForceAuthLogin)
+	common.OptionMap["SMTPProviders"] = common.SMTPProvidersJSON
+	common.OptionMap["SMTPProvidersPreview"] = common.SMTPProvidersJSON
+	common.OptionMap["SMTPMonthlyLimit"] = strconv.Itoa(common.SMTPMonthlyLimit)
+	common.OptionMap["EmailVerificationIPRateLimitEnable"] = strconv.FormatBool(common.EmailVerificationIPRateLimitEnable)
+	common.OptionMap["EmailVerificationIPRateLimitNum"] = strconv.Itoa(common.EmailVerificationIPRateLimitNum)
+	common.OptionMap["EmailVerificationIPRateLimitDuration"] = strconv.FormatInt(common.EmailVerificationIPRateLimitDuration, 10)
+	common.OptionMap["EmailVerificationEmailCooldownSeconds"] = strconv.FormatInt(common.EmailVerificationEmailCooldownSeconds, 10)
+	common.OptionMap["EmailVerificationDailyLimitEnable"] = strconv.FormatBool(common.EmailVerificationDailyLimitEnable)
+	common.OptionMap["EmailVerificationDailyLimit"] = strconv.Itoa(common.EmailVerificationDailyLimit)
 	common.OptionMap["Notice"] = ""
 	common.OptionMap["About"] = ""
 	common.OptionMap["HomePageContent"] = ""
@@ -190,6 +210,7 @@ func InitOptionMap() {
 	for k, v := range modelConfigs {
 		common.OptionMap[k] = v
 	}
+	common.OptionMap[common.SMTPProviderUsageStatsOptionKey] = common.SMTPProviderUsageStatsJSON
 
 	common.OptionMapRWMutex.Unlock()
 	loadOptionsFromDatabase()
@@ -282,6 +303,10 @@ func updateOptionMap(key string, value string) (err error) {
 			common.EmailDomainRestrictionEnabled = boolValue
 		case "EmailAliasRestrictionEnabled":
 			common.EmailAliasRestrictionEnabled = boolValue
+		case "QQNumericMailboxOnlyEnabled":
+			common.QQNumericMailboxOnlyEnabled = boolValue
+		case "EmailVerificationRegistrationCodeGateEnabled":
+			common.EmailVerificationRegistrationCodeGateEnabled = boolValue
 		case "AutomaticDisableChannelEnabled":
 			common.AutomaticDisableChannelEnabled = boolValue
 		case "AutomaticEnableChannelEnabled":
@@ -336,6 +361,10 @@ func updateOptionMap(key string, value string) (err error) {
 			common.SMTPSSLEnabled = boolValue
 		case "SMTPForceAuthLogin":
 			common.SMTPForceAuthLogin = boolValue
+		case "EmailVerificationIPRateLimitEnable":
+			common.EmailVerificationIPRateLimitEnable = boolValue
+		case "EmailVerificationDailyLimitEnable":
+			common.EmailVerificationDailyLimitEnable = boolValue
 		case "WorkerAllowHttpImageRequestEnabled":
 			system_setting.WorkerAllowHttpImageRequestEnabled = boolValue
 		case "DefaultUseAutoGroup":
@@ -358,6 +387,62 @@ func updateOptionMap(key string, value string) (err error) {
 		common.SMTPFrom = value
 	case "SMTPToken":
 		common.SMTPToken = value
+	case "SMTPProviders":
+		newProviders, parseErr := common.ParseSMTPProvidersFromJSONString(value)
+		if parseErr != nil {
+			err = parseErr
+			break
+		}
+		currentProviders := common.GetSMTPProvidersSnapshot()
+		resolvedProviders := common.ResolveSMTPProvidersForUpdate(newProviders, currentProviders)
+		common.SetSMTPProviders(resolvedProviders)
+		payload, marshalErr := common.Marshal(resolvedProviders)
+		if marshalErr != nil {
+			err = marshalErr
+			break
+		}
+		common.SMTPProvidersJSON = string(payload)
+		common.OptionMap[key] = common.SMTPProvidersJSON
+		previewPayload, previewMarshalErr := common.Marshal(common.SanitizeSMTPProvidersForDisplay(resolvedProviders))
+		if previewMarshalErr != nil {
+			err = previewMarshalErr
+			break
+		}
+		common.OptionMap["SMTPProvidersPreview"] = string(previewPayload)
+	case "SMTPMonthlyLimit":
+		intValue, parseErr := strconv.Atoi(value)
+		if parseErr == nil {
+			common.UpdateSMTPMonthlyLimit(intValue)
+		}
+	case "EmailVerificationIPRateLimitNum":
+		intValue, parseErr := strconv.Atoi(value)
+		if parseErr == nil {
+			common.EmailVerificationIPRateLimitNum = intValue
+		}
+	case "EmailVerificationIPRateLimitDuration":
+		intValue, parseErr := strconv.ParseInt(value, 10, 64)
+		if parseErr == nil {
+			common.EmailVerificationIPRateLimitDuration = intValue
+		}
+	case "EmailVerificationEmailCooldownSeconds":
+		intValue, parseErr := strconv.ParseInt(value, 10, 64)
+		if parseErr == nil {
+			common.EmailVerificationEmailCooldownSeconds = intValue
+		}
+	case "EmailVerificationDailyLimit":
+		intValue, parseErr := strconv.Atoi(value)
+		if parseErr == nil {
+			common.EmailVerificationDailyLimit = intValue
+		}
+	case common.SMTPProviderUsageStatsOptionKey:
+		stats, parseErr := common.ParseSMTPProviderUsageStatsFromJSONString(value)
+		if parseErr != nil {
+			err = parseErr
+			break
+		}
+		common.SMTPProviderUsageStatsJSON = common.EncodeSMTPProviderUsageStats(stats)
+		common.LoadSMTPUsageStats(stats)
+		common.OptionMap[key] = common.SMTPProviderUsageStatsJSON
 	case "ServerAddress":
 		system_setting.ServerAddress = value
 	case "WorkerUrl":

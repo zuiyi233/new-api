@@ -440,7 +440,19 @@ func GetOptions(c *gin.Context) {
 				displayValue = converted
 			}
 		}
+		if k == "SMTPProvidersPreview" {
+			providers, parseErr := common.ParseSMTPProvidersFromJSONString(value)
+			if parseErr == nil {
+				sanitized := common.SanitizeSMTPProvidersForDisplay(providers)
+				payload, marshalErr := common.Marshal(sanitized)
+				if marshalErr == nil {
+					displayValue = string(payload)
+				}
+			}
+		}
 		isSensitiveKey := strings.HasSuffix(k, "Token") ||
+			k == "SMTPProviders" ||
+			k == common.SMTPProviderUsageStatsOptionKey ||
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||
 			strings.HasSuffix(k, "secret") ||
@@ -549,6 +561,14 @@ func UpdateOption(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": "无法启用邮箱域名限制，请先填入限制的邮箱域名！",
+			})
+			return
+		}
+	case "QQNumericMailboxOnlyEnabled":
+		if option.Value == "true" && !containsDomain(common.EmailDomainWhitelist, "qq.com") {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "无法启用纯数字 QQ 邮箱限制，请先在邮箱域名白名单中加入 qq.com！",
 			})
 			return
 		}
@@ -729,6 +749,135 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "SMTPProviders":
+		providers, parseErr := common.ParseSMTPProvidersFromJSONString(option.Value.(string))
+		if parseErr != nil {
+			err = parseErr
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "SMTPProviders 配置格式错误: " + err.Error(),
+			})
+			return
+		}
+		if len(providers) == 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "SMTPProviders 至少需要一个账号",
+			})
+			return
+		}
+		for i := range providers {
+			if providers[i].Weight <= 0 {
+				providers[i].Weight = common.DefaultSMTPProviderWeight
+			}
+			if providers[i].CooldownSecond <= 0 {
+				providers[i].CooldownSecond = common.DefaultSMTPProviderFailureCooldownSecond
+			}
+		}
+		resolvedProviders := common.ResolveSMTPProvidersForUpdate(
+			providers,
+			common.GetSMTPProvidersSnapshot(),
+		)
+		// 保留真实 token 到数据库，重启后才能恢复 SMTP 发送能力。
+		// 对外展示由 SMTPProvidersPreview（脱敏）承担。
+		payload, marshalErr := common.Marshal(resolvedProviders)
+		if marshalErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "SMTPProviders 序列化失败: " + marshalErr.Error(),
+			})
+			return
+		}
+		option.Value = string(payload)
+	case common.SMTPProviderUsageStatsOptionKey:
+		_, err = common.ParseSMTPProviderUsageStatsFromJSONString(option.Value.(string))
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "SMTPProviderUsageStats 配置格式错误: " + err.Error(),
+			})
+			return
+		}
+	case "SMTPMonthlyLimit":
+		limit, parseErr := strconv.Atoi(strings.TrimSpace(option.Value.(string)))
+		if parseErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "SMTPMonthlyLimit 必须为正整数",
+			})
+			return
+		}
+		if limit <= 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "SMTPMonthlyLimit 必须大于 0",
+			})
+			return
+		}
+	case "EmailVerificationIPRateLimitNum":
+		limit, parseErr := strconv.Atoi(strings.TrimSpace(option.Value.(string)))
+		if parseErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "同一IP可发次数必须为整数",
+			})
+			return
+		}
+		if limit < 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "同一IP可发次数不能小于 0",
+			})
+			return
+		}
+	case "EmailVerificationIPRateLimitDuration":
+		seconds, parseErr := strconv.ParseInt(strings.TrimSpace(option.Value.(string)), 10, 64)
+		if parseErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "IP 限制时间窗口必须为整数秒",
+			})
+			return
+		}
+		if seconds < 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "IP 限制时间窗口不能小于 0",
+			})
+			return
+		}
+	case "EmailVerificationEmailCooldownSeconds":
+		seconds, parseErr := strconv.ParseInt(strings.TrimSpace(option.Value.(string)), 10, 64)
+		if parseErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "同一邮箱冷却时间必须为整数秒",
+			})
+			return
+		}
+		if seconds < 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "同一邮箱冷却时间不能小于 0",
+			})
+			return
+		}
+	case "EmailVerificationDailyLimit":
+		limit, parseErr := strconv.Atoi(strings.TrimSpace(option.Value.(string)))
+		if parseErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "每天总上限必须为整数",
+			})
+			return
+		}
+		if limit < 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "每天总上限不能小于 0",
+			})
+			return
+		}
 	}
 
 	if strings.HasPrefix(option.Key, "checkin_setting.") {
@@ -776,4 +925,14 @@ func UpdateOption(c *gin.Context) {
 		"message": "",
 	})
 	return
+}
+
+func containsDomain(domains []string, target string) bool {
+	target = strings.ToLower(strings.TrimSpace(target))
+	for _, domain := range domains {
+		if strings.ToLower(strings.TrimSpace(domain)) == target {
+			return true
+		}
+	}
+	return false
 }

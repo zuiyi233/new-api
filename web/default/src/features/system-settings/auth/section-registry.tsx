@@ -19,8 +19,12 @@ const AUTH_SECTIONS = [
           PasswordRegisterEnabled: settings.PasswordRegisterEnabled,
           EmailVerificationEnabled: settings.EmailVerificationEnabled,
           RegisterEnabled: settings.RegisterEnabled,
+          RegistrationCodeRequired: settings.RegistrationCodeRequired,
           EmailDomainRestrictionEnabled: settings.EmailDomainRestrictionEnabled,
           EmailAliasRestrictionEnabled: settings.EmailAliasRestrictionEnabled,
+          QQNumericMailboxOnlyEnabled: settings.QQNumericMailboxOnlyEnabled,
+          EmailVerificationRegistrationCodeGateEnabled:
+            settings.EmailVerificationRegistrationCodeGateEnabled,
           EmailDomainWhitelist: settings.EmailDomainWhitelist,
         }}
       />

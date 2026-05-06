@@ -125,6 +125,13 @@ func InitEnv() {
 	SearchRateLimitEnable = GetEnvOrDefaultBool("SEARCH_RATE_LIMIT_ENABLE", true)
 	SearchRateLimitNum = GetEnvOrDefault("SEARCH_RATE_LIMIT", 10)
 	SearchRateLimitDuration = int64(GetEnvOrDefault("SEARCH_RATE_LIMIT_DURATION", 60))
+
+	EmailVerificationIPRateLimitEnable = GetEnvOrDefaultBool("EMAIL_VERIFICATION_IP_RATE_LIMIT_ENABLE", true)
+	EmailVerificationIPRateLimitNum = GetEnvOrDefault("EMAIL_VERIFICATION_IP_RATE_LIMIT", 2)
+	EmailVerificationIPRateLimitDuration = int64(GetEnvOrDefault("EMAIL_VERIFICATION_IP_RATE_LIMIT_DURATION", 30))
+	EmailVerificationEmailCooldownSeconds = int64(GetEnvOrDefault("EMAIL_VERIFICATION_EMAIL_COOLDOWN_SECONDS", 120))
+	EmailVerificationDailyLimitEnable = GetEnvOrDefaultBool("EMAIL_VERIFICATION_DAILY_LIMIT_ENABLE", true)
+	EmailVerificationDailyLimit = GetEnvOrDefault("EMAIL_VERIFICATION_DAILY_LIMIT", 180)
 	initConstantEnv()
 }
 

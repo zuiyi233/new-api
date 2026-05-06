@@ -20,6 +20,7 @@ export interface RegisterPayload {
   email?: string
   verification_code?: string
   aff?: string
+  registration_code?: string
   turnstile?: string
 }
 
@@ -30,6 +31,7 @@ export interface PasswordResetPayload {
 
 export interface EmailVerificationPayload {
   email: string
+  registration_code?: string
   turnstile?: string
 }
 
@@ -95,6 +97,8 @@ export interface SystemStatus {
     turnstile_check?: boolean
     turnstile_site_key?: string
     email_verification?: boolean
+    registration_code_required?: boolean
+    email_verification_registration_code_gate_enabled?: boolean
     self_use_mode_enabled?: boolean
     display_in_currency?: boolean
     display_token_stat_enabled?: boolean
@@ -137,6 +141,8 @@ export interface SystemStatus {
   turnstile_check?: boolean
   turnstile_site_key?: string
   email_verification?: boolean
+  registration_code_required?: boolean
+  email_verification_registration_code_gate_enabled?: boolean
   self_use_mode_enabled?: boolean
   display_in_currency?: boolean
   display_token_stat_enabled?: boolean

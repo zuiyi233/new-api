@@ -83,6 +83,19 @@ const INTEGRATIONS_SECTIONS = [
           SMTPToken: settings.SMTPToken,
           SMTPSSLEnabled: settings.SMTPSSLEnabled,
           SMTPForceAuthLogin: settings.SMTPForceAuthLogin,
+          SMTPMonthlyLimit: settings.SMTPMonthlyLimit,
+          SMTPProviders: settings.SMTPProvidersPreview,
+          EmailVerificationIPRateLimitEnable:
+            settings.EmailVerificationIPRateLimitEnable,
+          EmailVerificationIPRateLimitNum:
+            settings.EmailVerificationIPRateLimitNum,
+          EmailVerificationIPRateLimitDuration:
+            settings.EmailVerificationIPRateLimitDuration,
+          EmailVerificationEmailCooldownSeconds:
+            settings.EmailVerificationEmailCooldownSeconds,
+          EmailVerificationDailyLimitEnable:
+            settings.EmailVerificationDailyLimitEnable,
+          EmailVerificationDailyLimit: settings.EmailVerificationDailyLimit,
         }}
       />
     ),

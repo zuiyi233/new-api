@@ -24,8 +24,11 @@ const basicAuthSchema = z.object({
   PasswordRegisterEnabled: z.boolean(),
   EmailVerificationEnabled: z.boolean(),
   RegisterEnabled: z.boolean(),
+  RegistrationCodeRequired: z.boolean(),
   EmailDomainRestrictionEnabled: z.boolean(),
   EmailAliasRestrictionEnabled: z.boolean(),
+  QQNumericMailboxOnlyEnabled: z.boolean(),
+  EmailVerificationRegistrationCodeGateEnabled: z.boolean(),
   EmailDomainWhitelist: z.string(),
 })
 
@@ -182,6 +185,56 @@ export function BasicAuthSection({ defaultValues }: BasicAuthSectionProps) {
 
           <FormField
             control={form.control}
+            name='RegistrationCodeRequired'
+            render={({ field }) => (
+              <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                <div className='space-y-0.5'>
+                  <FormLabel className='text-base'>
+                    {t('Registration Code Required')}
+                  </FormLabel>
+                  <FormDescription>
+                    {t(
+                      'Require users to enter a registration code when creating accounts'
+                    )}
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='EmailVerificationRegistrationCodeGateEnabled'
+            render={({ field }) => (
+              <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                <div className='space-y-0.5'>
+                  <FormLabel className='text-base'>
+                    {t('Send code only after registration code is entered')}
+                  </FormLabel>
+                  <FormDescription>
+                    {t(
+                      'When enabled, users must enter a valid registration code before sending email verification code'
+                    )}
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name='EmailDomainRestrictionEnabled'
             render={({ field }) => (
               <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
@@ -191,6 +244,11 @@ export function BasicAuthSection({ defaultValues }: BasicAuthSectionProps) {
                   </FormLabel>
                   <FormDescription>
                     {t('Only allow specific email domains')}
+                  </FormDescription>
+                  <FormDescription>
+                    {t(
+                      '建议配合“仅允许纯数字 QQ 邮箱”一起开启，并在白名单里保留 qq.com'
+                    )}
                   </FormDescription>
                 </div>
                 <FormControl>
@@ -214,6 +272,31 @@ export function BasicAuthSection({ defaultValues }: BasicAuthSectionProps) {
                   </FormLabel>
                   <FormDescription>
                     {t('Block email aliases (e.g., user+alias@domain.com)')}
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='QQNumericMailboxOnlyEnabled'
+            render={({ field }) => (
+              <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                <div className='space-y-0.5'>
+                  <FormLabel className='text-base'>
+                    {t('Only allow numeric QQ mailboxes')}
+                  </FormLabel>
+                  <FormDescription>
+                    {t(
+                      'When enabled, QQ email local part must be numbers only (e.g., 123456@qq.com)'
+                    )}
                   </FormDescription>
                 </div>
                 <FormControl>
