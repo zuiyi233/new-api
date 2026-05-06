@@ -83,6 +83,73 @@ func limitByIPMemory(c *gin.Context) emailVerificationLimitResult {
 	return emailVerificationLimitResult{}
 }
 
+func normalizeRegistrationCodeFromQuery(c *gin.Context) string {
+	return strings.ToUpper(strings.TrimSpace(c.Query("registration_code")))
+}
+
+func limitByRegistrationCodeRedis(registrationCode string) emailVerificationLimitResult {
+	if !common.EmailVerificationRegistrationCodeRateLimitEnable ||
+		common.EmailVerificationRegistrationCodeRateLimitNum <= 0 ||
+		common.EmailVerificationRegistrationCodeRateLimitDuration <= 0 ||
+		registrationCode == "" {
+		return emailVerificationLimitResult{}
+	}
+
+	ctx := context.Background()
+	rdb := common.RDB
+	key := "emailVerification:registration_code:" + registrationCode
+
+	count, err := rdb.Incr(ctx, key).Result()
+	if err != nil {
+		return emailVerificationLimitResult{
+			blocked: true,
+			message: "系统繁忙，请稍后再试",
+		}
+	}
+	if count == 1 {
+		_ = rdb.Expire(
+			ctx,
+			key,
+			time.Duration(common.EmailVerificationRegistrationCodeRateLimitDuration)*time.Second,
+		).Err()
+	}
+	if count <= int64(common.EmailVerificationRegistrationCodeRateLimitNum) {
+		return emailVerificationLimitResult{}
+	}
+
+	ttl, err := rdb.TTL(ctx, key).Result()
+	waitSeconds := common.EmailVerificationRegistrationCodeRateLimitDuration
+	if err == nil && ttl > 0 {
+		waitSeconds = int64(ttl.Seconds())
+	}
+	return emailVerificationLimitResult{
+		blocked: true,
+		message: fmt.Sprintf("该注册码请求过于频繁，请等待 %d 秒后再试", waitSeconds),
+	}
+}
+
+func limitByRegistrationCodeMemory(registrationCode string) emailVerificationLimitResult {
+	if !common.EmailVerificationRegistrationCodeRateLimitEnable ||
+		common.EmailVerificationRegistrationCodeRateLimitNum <= 0 ||
+		common.EmailVerificationRegistrationCodeRateLimitDuration <= 0 ||
+		registrationCode == "" {
+		return emailVerificationLimitResult{}
+	}
+
+	key := EmailVerificationRateLimitMark + ":registration_code:" + registrationCode
+	if !inMemoryRateLimiter.Request(
+		key,
+		common.EmailVerificationRegistrationCodeRateLimitNum,
+		common.EmailVerificationRegistrationCodeRateLimitDuration,
+	) {
+		return emailVerificationLimitResult{
+			blocked: true,
+			message: "该注册码请求过于频繁，请稍后再试",
+		}
+	}
+	return emailVerificationLimitResult{}
+}
+
 func limitByEmailCooldownRedis(c *gin.Context, email string) emailVerificationLimitResult {
 	if common.EmailVerificationEmailCooldownSeconds <= 0 || email == "" {
 		return emailVerificationLimitResult{}
@@ -178,6 +245,7 @@ func limitByDailyBudgetMemory() emailVerificationLimitResult {
 
 func applyEmailVerificationRateLimit(c *gin.Context, useRedis bool) emailVerificationLimitResult {
 	email := normalizeEmailFromQuery(c)
+	registrationCode := normalizeRegistrationCodeFromQuery(c)
 
 	steps := []func() emailVerificationLimitResult{
 		func() emailVerificationLimitResult {
@@ -185,6 +253,12 @@ func applyEmailVerificationRateLimit(c *gin.Context, useRedis bool) emailVerific
 				return limitByIPRedis(c)
 			}
 			return limitByIPMemory(c)
+		},
+		func() emailVerificationLimitResult {
+			if useRedis {
+				return limitByRegistrationCodeRedis(registrationCode)
+			}
+			return limitByRegistrationCodeMemory(registrationCode)
 		},
 		func() emailVerificationLimitResult {
 			if useRedis {

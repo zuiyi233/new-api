@@ -82,6 +82,9 @@ func InitOptionMap() {
 	common.OptionMap["EmailVerificationIPRateLimitEnable"] = strconv.FormatBool(common.EmailVerificationIPRateLimitEnable)
 	common.OptionMap["EmailVerificationIPRateLimitNum"] = strconv.Itoa(common.EmailVerificationIPRateLimitNum)
 	common.OptionMap["EmailVerificationIPRateLimitDuration"] = strconv.FormatInt(common.EmailVerificationIPRateLimitDuration, 10)
+	common.OptionMap["EmailVerificationRegistrationCodeRateLimitEnable"] = strconv.FormatBool(common.EmailVerificationRegistrationCodeRateLimitEnable)
+	common.OptionMap["EmailVerificationRegistrationCodeRateLimitNum"] = strconv.Itoa(common.EmailVerificationRegistrationCodeRateLimitNum)
+	common.OptionMap["EmailVerificationRegistrationCodeRateLimitDuration"] = strconv.FormatInt(common.EmailVerificationRegistrationCodeRateLimitDuration, 10)
 	common.OptionMap["EmailVerificationEmailCooldownSeconds"] = strconv.FormatInt(common.EmailVerificationEmailCooldownSeconds, 10)
 	common.OptionMap["EmailVerificationDailyLimitEnable"] = strconv.FormatBool(common.EmailVerificationDailyLimitEnable)
 	common.OptionMap["EmailVerificationDailyLimit"] = strconv.Itoa(common.EmailVerificationDailyLimit)
@@ -363,6 +366,8 @@ func updateOptionMap(key string, value string) (err error) {
 			common.SMTPForceAuthLogin = boolValue
 		case "EmailVerificationIPRateLimitEnable":
 			common.EmailVerificationIPRateLimitEnable = boolValue
+		case "EmailVerificationRegistrationCodeRateLimitEnable":
+			common.EmailVerificationRegistrationCodeRateLimitEnable = boolValue
 		case "EmailVerificationDailyLimitEnable":
 			common.EmailVerificationDailyLimitEnable = boolValue
 		case "WorkerAllowHttpImageRequestEnabled":
@@ -423,6 +428,16 @@ func updateOptionMap(key string, value string) (err error) {
 		intValue, parseErr := strconv.ParseInt(value, 10, 64)
 		if parseErr == nil {
 			common.EmailVerificationIPRateLimitDuration = intValue
+		}
+	case "EmailVerificationRegistrationCodeRateLimitNum":
+		intValue, parseErr := strconv.Atoi(value)
+		if parseErr == nil {
+			common.EmailVerificationRegistrationCodeRateLimitNum = intValue
+		}
+	case "EmailVerificationRegistrationCodeRateLimitDuration":
+		intValue, parseErr := strconv.ParseInt(value, 10, 64)
+		if parseErr == nil {
+			common.EmailVerificationRegistrationCodeRateLimitDuration = intValue
 		}
 	case "EmailVerificationEmailCooldownSeconds":
 		intValue, parseErr := strconv.ParseInt(value, 10, 64)

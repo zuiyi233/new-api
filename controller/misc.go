@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func TestStatus(c *gin.Context) {
@@ -248,7 +250,31 @@ func SendEmailVerification(c *gin.Context) {
 			common.ApiErrorMsg(c, "请先填写注册码，再获取邮箱验证码")
 			return
 		}
-		if _, err := model.ValidateRegistrationCode(registrationCode); err != nil {
+		err := model.DB.Transaction(func(tx *gorm.DB) error {
+			validCode, err := model.ValidateRegistrationCodeTx(tx, registrationCode)
+			if err != nil {
+				return err
+			}
+			existingBinding, err := model.GetEmailVerificationRegistrationBindingByEmailTx(tx, email)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				_, createErr := model.BindEmailToRegistrationCodeTx(tx, email, validCode)
+				if createErr != nil {
+					return createErr
+				}
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			normalizedCurrentCode := strings.ToUpper(strings.TrimSpace(validCode.Code))
+			normalizedBoundCode := strings.ToUpper(strings.TrimSpace(existingBinding.RegistrationCode))
+			if existingBinding.RegistrationCodeId != validCode.Id &&
+				normalizedBoundCode != normalizedCurrentCode {
+				return errors.New("该邮箱已绑定其他注册码，请使用首次绑定的注册码")
+			}
+			return nil
+		})
+		if err != nil {
 			common.ApiError(c, err)
 			return
 		}

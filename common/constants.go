@@ -215,6 +215,9 @@ var (
 	EmailVerificationIPRateLimitEnable          = true
 	EmailVerificationIPRateLimitNum             = 2
 	EmailVerificationIPRateLimitDuration  int64 = 30
+	EmailVerificationRegistrationCodeRateLimitEnable          = false
+	EmailVerificationRegistrationCodeRateLimitNum             = 3
+	EmailVerificationRegistrationCodeRateLimitDuration  int64 = 60
 	EmailVerificationEmailCooldownSeconds int64 = 120
 	EmailVerificationDailyLimitEnable           = true
 	EmailVerificationDailyLimit                 = 180

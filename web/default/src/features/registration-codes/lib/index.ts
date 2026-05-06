@@ -6,3 +6,11 @@ export {
   transformFormDataToPayload,
   transformRegistrationCodeToFormDefaults,
 } from './registration-code-form'
+export {
+  REGISTRATION_CODE_EXPORT_ALL_COLUMNS_ORDER,
+  REGISTRATION_CODE_EXPORT_COMMON_COLUMNS,
+  REGISTRATION_CODE_EXPORT_CODE_ONLY_COLUMNS,
+  REGISTRATION_CODE_EXPORT_COLUMN_MAP,
+  buildRegistrationCodeExportColumns,
+  type RegistrationCodeExportColumnKey,
+} from './export-columns'

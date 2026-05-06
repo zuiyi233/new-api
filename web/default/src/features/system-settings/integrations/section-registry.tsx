@@ -91,6 +91,12 @@ const INTEGRATIONS_SECTIONS = [
             settings.EmailVerificationIPRateLimitNum,
           EmailVerificationIPRateLimitDuration:
             settings.EmailVerificationIPRateLimitDuration,
+          EmailVerificationRegistrationCodeRateLimitEnable:
+            settings.EmailVerificationRegistrationCodeRateLimitEnable,
+          EmailVerificationRegistrationCodeRateLimitNum:
+            settings.EmailVerificationRegistrationCodeRateLimitNum,
+          EmailVerificationRegistrationCodeRateLimitDuration:
+            settings.EmailVerificationRegistrationCodeRateLimitDuration,
           EmailVerificationEmailCooldownSeconds:
             settings.EmailVerificationEmailCooldownSeconds,
           EmailVerificationDailyLimitEnable:

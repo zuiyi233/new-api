@@ -846,6 +846,38 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	case "EmailVerificationRegistrationCodeRateLimitNum":
+		limit, parseErr := strconv.Atoi(strings.TrimSpace(option.Value.(string)))
+		if parseErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "同一注册码可发次数必须为整数",
+			})
+			return
+		}
+		if limit < 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "同一注册码可发次数不能小于 0",
+			})
+			return
+		}
+	case "EmailVerificationRegistrationCodeRateLimitDuration":
+		seconds, parseErr := strconv.ParseInt(strings.TrimSpace(option.Value.(string)), 10, 64)
+		if parseErr != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "注册码限制时间窗口必须为整数秒",
+			})
+			return
+		}
+		if seconds < 0 {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": "注册码限制时间窗口不能小于 0",
+			})
+			return
+		}
 	case "EmailVerificationEmailCooldownSeconds":
 		seconds, parseErr := strconv.ParseInt(strings.TrimSpace(option.Value.(string)), 10, 64)
 		if parseErr != nil {

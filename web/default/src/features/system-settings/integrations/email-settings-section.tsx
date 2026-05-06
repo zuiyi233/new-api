@@ -75,6 +75,15 @@ const createEmailSchema = (t: (key: string) => string) =>
       const trimmed = value.trim()
       return /^\d+$/.test(trimmed)
     }, t('请输入不小于 0 的整数')),
+    EmailVerificationRegistrationCodeRateLimitEnable: z.boolean(),
+    EmailVerificationRegistrationCodeRateLimitNum: z.string().refine((value) => {
+      const trimmed = value.trim()
+      return /^\d+$/.test(trimmed)
+    }, t('请输入不小于 0 的整数')),
+    EmailVerificationRegistrationCodeRateLimitDuration: z.string().refine((value) => {
+      const trimmed = value.trim()
+      return /^\d+$/.test(trimmed)
+    }, t('请输入不小于 0 的整数')),
     EmailVerificationEmailCooldownSeconds: z.string().refine((value) => {
       const trimmed = value.trim()
       return /^\d+$/.test(trimmed)
@@ -138,6 +147,9 @@ type EmailSettingsSectionProps = {
     EmailVerificationIPRateLimitEnable?: boolean
     EmailVerificationIPRateLimitNum?: string
     EmailVerificationIPRateLimitDuration?: string
+    EmailVerificationRegistrationCodeRateLimitEnable?: boolean
+    EmailVerificationRegistrationCodeRateLimitNum?: string
+    EmailVerificationRegistrationCodeRateLimitDuration?: string
     EmailVerificationEmailCooldownSeconds?: string
     EmailVerificationDailyLimitEnable?: boolean
     EmailVerificationDailyLimit?: string
@@ -227,6 +239,12 @@ function buildFormDefaults(
     EmailVerificationIPRateLimitNum: values.EmailVerificationIPRateLimitNum ?? '2',
     EmailVerificationIPRateLimitDuration:
       values.EmailVerificationIPRateLimitDuration ?? '30',
+    EmailVerificationRegistrationCodeRateLimitEnable:
+      values.EmailVerificationRegistrationCodeRateLimitEnable ?? false,
+    EmailVerificationRegistrationCodeRateLimitNum:
+      values.EmailVerificationRegistrationCodeRateLimitNum ?? '3',
+    EmailVerificationRegistrationCodeRateLimitDuration:
+      values.EmailVerificationRegistrationCodeRateLimitDuration ?? '60',
     EmailVerificationEmailCooldownSeconds:
       values.EmailVerificationEmailCooldownSeconds ?? '120',
     EmailVerificationDailyLimitEnable:
@@ -306,6 +324,12 @@ export function EmailSettingsSection({ defaultValues }: EmailSettingsSectionProp
     const ipRateLimitDuration = Number(
       values.EmailVerificationIPRateLimitDuration.trim()
     )
+    const registrationCodeRateLimitNum = Number(
+      values.EmailVerificationRegistrationCodeRateLimitNum.trim()
+    )
+    const registrationCodeRateLimitDuration = Number(
+      values.EmailVerificationRegistrationCodeRateLimitDuration.trim()
+    )
     const emailCooldownSeconds = Number(
       values.EmailVerificationEmailCooldownSeconds.trim()
     )
@@ -340,6 +364,18 @@ export function EmailSettingsSection({ defaultValues }: EmailSettingsSectionProp
       {
         key: 'EmailVerificationIPRateLimitDuration',
         value: String(ipRateLimitDuration),
+      },
+      {
+        key: 'EmailVerificationRegistrationCodeRateLimitEnable',
+        value: values.EmailVerificationRegistrationCodeRateLimitEnable,
+      },
+      {
+        key: 'EmailVerificationRegistrationCodeRateLimitNum',
+        value: String(registrationCodeRateLimitNum),
+      },
+      {
+        key: 'EmailVerificationRegistrationCodeRateLimitDuration',
+        value: String(registrationCodeRateLimitDuration),
       },
       {
         key: 'EmailVerificationEmailCooldownSeconds',
@@ -464,6 +500,76 @@ export function EmailSettingsSection({ defaultValues }: EmailSettingsSectionProp
                     </FormControl>
                     <FormDescription>
                       {t('例如填 30，就是 30 秒内最多发上面设置的次数。')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name='EmailVerificationRegistrationCodeRateLimitEnable'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-center justify-between rounded-lg border p-3'>
+                  <div className='space-y-0.5'>
+                    <FormLabel className='text-base'>
+                      {t('限制同一个注册码短时间反复发码')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t('建议开启。可防止攻击者拿一个注册码反复刷验证码。')}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <div className='grid gap-4 md:grid-cols-2'>
+              <FormField
+                control={form.control}
+                name='EmailVerificationRegistrationCodeRateLimitNum'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('同一个注册码最多可发次数')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        autoComplete='off'
+                        type='number'
+                        min='0'
+                        placeholder='3'
+                        {...field}
+                        onChange={(event) => field.onChange(event.target.value)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('例如填 3，表示在下面这个时间窗口里最多发 3 次。')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='EmailVerificationRegistrationCodeRateLimitDuration'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('注册码次数统计窗口（秒）')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        autoComplete='off'
+                        type='number'
+                        min='0'
+                        placeholder='60'
+                        {...field}
+                        onChange={(event) => field.onChange(event.target.value)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('例如填 60，就是 60 秒内最多发上面设置的次数。')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

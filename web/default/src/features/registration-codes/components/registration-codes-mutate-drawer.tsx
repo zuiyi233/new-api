@@ -372,7 +372,7 @@ export function RegistrationCodesMutateDrawer({
                   name='count'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('Count')}</FormLabel>
+                      <FormLabel>{t('一次生成多少个注册码')}</FormLabel>
                       <FormControl>
                         <Input
                           type='number'
@@ -383,10 +383,10 @@ export function RegistrationCodesMutateDrawer({
                           onChange={(e) =>
                             field.onChange(Number(e.target.value))
                           }
-                        />
+                      />
                       </FormControl>
                       <FormDescription>
-                        {t('Number of codes to generate in this batch.')}
+                        {t('建议先小批量测试，例如 10 或 50，确认无误后再批量生成。')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

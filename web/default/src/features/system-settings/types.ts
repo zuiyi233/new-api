@@ -169,6 +169,9 @@ export type IntegrationSettings = {
   EmailVerificationIPRateLimitEnable: boolean
   EmailVerificationIPRateLimitNum: string
   EmailVerificationIPRateLimitDuration: string
+  EmailVerificationRegistrationCodeRateLimitEnable: boolean
+  EmailVerificationRegistrationCodeRateLimitNum: string
+  EmailVerificationRegistrationCodeRateLimitDuration: string
   EmailVerificationEmailCooldownSeconds: string
   EmailVerificationDailyLimitEnable: boolean
   EmailVerificationDailyLimit: string
