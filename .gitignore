@@ -4,6 +4,7 @@
 .history
 upload
 *.exe
+*.exe~
 *.db
 build
 *.db-journal
@@ -39,3 +40,6 @@ token_estimator_test.go
 .playwright-mcp
 .test
 skills-lock.json
+.tmp*
+.local-run/
+tmp/air/
