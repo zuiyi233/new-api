@@ -43,3 +43,5 @@ skills-lock.json
 .tmp*
 .local-run/
 tmp/air/
+
+*.exe~
